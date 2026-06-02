@@ -6,12 +6,12 @@ export async function GET() {
   try {
     const supabase = await createServerSupabaseClient()
 
-    // Anon key (respects RLS)
-    const { count: anonProducts, error: pErr } = await supabase.from('products').select('*', { count: 'exact', head: true })
-    const { count: anonCategories, error: cErr } = await supabase.from('categories').select('*', { count: 'exact', head: true })
-    const { count: anonBanners, error: bErr } = await supabase.from('banners').select('*', { count: 'exact', head: true })
+    // Anon key — pakai query tanpa head supaya RLS ke-trigger
+    const { data: anonProducts, error: pErr } = await supabase.from('products').select('id').limit(1)
+    const { data: anonCategories, error: cErr } = await supabase.from('categories').select('id').limit(1)
+    const { data: anonBanners, error: bErr } = await supabase.from('banners').select('id').limit(1)
 
-    // Service role (bypasses RLS - to confirm data exists)
+    // Service role (bypasses RLS)
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -31,8 +31,12 @@ export async function GET() {
         serviceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       },
       database: {
-        anon: { products: anonProducts ?? 0, categories: anonCategories ?? 0, banners: anonBanners ?? 0 },
-        actual: { products: actualProducts ?? 'err', categories: actualCategories ?? 'err', banners: actualBanners ?? 'err' },
+        anon: {
+          products: anonProducts?.length ?? 0,
+          categories: anonCategories?.length ?? 0,
+          banners: anonBanners?.length ?? 0,
+        },
+        actual: { products: actualProducts, categories: actualCategories, banners: actualBanners },
       },
       errors: {
         products: pErr?.message || null,
