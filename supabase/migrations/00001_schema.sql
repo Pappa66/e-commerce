@@ -209,6 +209,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
+-- Helper function to check admin role (bypasses RLS recursion)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql SECURITY DEFINER STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+$$;
+
 -- Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
@@ -223,35 +234,35 @@ ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
 -- RLS Policies
 CREATE POLICY "Public products" ON products FOR SELECT USING (is_active = true);
 CREATE POLICY "Admin all products" ON products FOR ALL USING (
-  auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin')
+  public.is_admin()
 );
 
 CREATE POLICY "Public categories" ON categories FOR SELECT USING (is_active = true);
 CREATE POLICY "Admin all categories" ON categories FOR ALL USING (
-  auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin')
+  public.is_admin()
 );
 
 CREATE POLICY "Public banners" ON banners FOR SELECT USING (is_active = true);
 CREATE POLICY "Admin all banners" ON banners FOR ALL USING (
-  auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin')
+  public.is_admin()
 );
 
 CREATE POLICY "Users own profile" ON profiles
-  FOR SELECT USING (auth.uid() = id OR auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin'));
+  FOR SELECT USING (auth.uid() = id OR public.is_admin());
 CREATE POLICY "Users update own profile" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 
 CREATE POLICY "Users own orders" ON orders
-  FOR SELECT USING (auth.uid() = user_id OR auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin'));
+  FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
 CREATE POLICY "Users insert orders" ON orders FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Admin update orders" ON orders FOR UPDATE USING (
-  auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin')
+  public.is_admin()
 );
 
 CREATE POLICY "Users own order items" ON order_items
   FOR SELECT USING (order_id IN (SELECT id FROM orders WHERE user_id = auth.uid()));
 CREATE POLICY "Admin all order items" ON order_items FOR ALL USING (
-  auth.uid() IN (SELECT id FROM profiles WHERE role = 'admin')
+  public.is_admin()
 );
 
 CREATE POLICY "Users own addresses" ON addresses
