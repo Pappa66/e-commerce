@@ -3,6 +3,9 @@
 -- Jalankan SETELAH schema migration sukses
 -- ============================================================
 
+-- 0. Hapus user admin lama (kalau ada)
+DELETE FROM auth.users WHERE email = 'admin@d2cpro.com';
+
 -- 1. Buat Admin User
 -- Password di-hash pakai bcrypt via pgcrypto
 INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_user_meta_data, created_at, updated_at)
