@@ -1,5 +1,27 @@
+-- ⚠️ RESET DATABASE - Hapus semua yang ada
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
+DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
+DROP TRIGGER IF EXISTS update_banners_updated_at ON banners;
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
+DROP TRIGGER IF EXISTS update_carts_updated_at ON carts;
+DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
+DROP FUNCTION IF EXISTS handle_new_user();
+DROP FUNCTION IF EXISTS update_updated_at();
+
+DROP TABLE IF EXISTS cart_items CASCADE;
+DROP TABLE IF EXISTS carts CASCADE;
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS addresses CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+DROP TABLE IF EXISTS banners CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS categories CASCADE;
+
+-- ============================================================
 -- E-Commerce D2C Pro - Full Schema
--- Run this in Supabase SQL Editor
+-- ============================================================
 
 -- 1. Categories
 CREATE TABLE categories (
@@ -157,19 +179,14 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_products_updated_at
   BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 CREATE TRIGGER update_categories_updated_at
   BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 CREATE TRIGGER update_banners_updated_at
   BEFORE UPDATE ON banners FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 CREATE TRIGGER update_carts_updated_at
   BEFORE UPDATE ON carts FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 CREATE TRIGGER update_orders_updated_at
   BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 

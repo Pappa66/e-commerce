@@ -1,7 +1,29 @@
--- Seed data for D2C Pro E-Commerce
--- Run after schema migration
+-- ============================================================
+-- SEED DATA - D2C Pro E-Commerce
+-- Jalankan SETELAH schema migration sukses
+-- ============================================================
 
--- Categories
+-- 1. Buat Admin User
+-- Password di-hash pakai bcrypt via pgcrypto
+INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_user_meta_data, created_at, updated_at)
+VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  gen_random_uuid(),
+  'authenticated',
+  'authenticated',
+  'admin@d2cpro.com',
+  crypt('admin123', gen_salt('bf')),
+  now(),
+  jsonb_build_object('full_name', 'Admin Toko', 'role', 'admin'),
+  now(),
+  now()
+);
+
+-- Trigger on_auth_user_created otomatis bikin profile
+-- Tinggal update role-nya jadi admin
+UPDATE profiles SET role = 'admin' WHERE email = 'admin@d2cpro.com';
+
+-- 2. Categories
 INSERT INTO categories (name, slug, description, sort_order) VALUES
 ('Hijab', 'hijab', 'Koleksi hijab modern untuk sehari-hari', 1),
 ('Gamis', 'gamis', 'Gamis elegan untuk berbagai acara', 2),
@@ -9,7 +31,7 @@ INSERT INTO categories (name, slug, description, sort_order) VALUES
 ('Aksesoris', 'aksesoris', 'Lengkapi penampilan dengan aksesoris', 4),
 ('Perlengkapan Sholat', 'perlengkapan-sholat', 'Mukena, sajadah, dan perlengkapan ibadah', 5);
 
--- Products
+-- 3. Products
 INSERT INTO products (name, slug, description, category_id, base_price, profit_margin, tax_rate, final_price, stock, weight_grams, is_featured, images, meta_title, meta_description, meta_keywords) VALUES
 (
   'Hijab Kalisha Premium',
@@ -71,7 +93,7 @@ INSERT INTO products (name, slug, description, category_id, base_price, profit_m
   'gamis-alisha-brukat',
   'Gamis brukat dengan kombinasi lace dan tile yang anggun. Potongan pas di badan dengan flare di bagian bawah. Dilengkapi inner dan belt matching.',
   (SELECT id FROM categories WHERE slug = 'gamis'),
- 250000, 20, 11, 333000, 20, 450, true,
+  250000, 20, 11, 333000, 20, 450, true,
   ARRAY['https://images.unsplash.com/photo-1605600659873-12a5b48218d9?w=600'],
   'Gamis Alisha Brukat - Gamis Lace Anggun | D2C Pro',
   'Gamis brukat lace anggun dengan kombinasi tile. Dilengkapi inner dan belt matching. Cocok untuk acara spesial dan wedding.',
@@ -100,14 +122,8 @@ INSERT INTO products (name, slug, description, category_id, base_price, profit_m
   'sajadah travel, sajadah anti air, sajadah microfiber, perlengkapan sholat'
 );
 
--- Banners
+-- 4. Banners
 INSERT INTO banners (title, subtitle, image_url, link_url, sort_order) VALUES
 ('Koleksi Hijab Terbaru', 'Tampil stylish dengan hijab modern kami, adem dan nyaman sepanjang hari', 'https://images.unsplash.com/photo-1605600659873-12a5b48218d9?w=1200', '/search?q=hijab', 1),
 ('Gamis Spesial Ramadan', 'Sambut bulan penuh berkah dengan gamis elegan dari koleksi terbaru', 'https://images.unsplash.com/photo-1605600659873-12a5b48218d9?w=1200', '/search?q=gamis', 2),
 ('Bebas Ongkir + COD', 'Nikmati belanja tanpa khawatir. Bayar di tempat dan gratis ongkir!', 'https://images.unsplash.com/photo-1605600659873-12a5b48218d9?w=1200', '/search', 3);
-
--- Create admin user (password: admin123456)
--- Note: Create this user first in Supabase Auth UI
--- Then run:
--- INSERT INTO profiles (id, email, full_name, role)
--- VALUES ('<user-id-from-auth>', 'admin@d2cpro.com', 'Admin Toko', 'admin');
