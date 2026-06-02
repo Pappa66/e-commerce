@@ -5,9 +5,9 @@ export async function GET() {
   try {
     const supabase = await createServerSupabaseClient()
 
-    const { data: products, error: pErr } = await supabase.from('products').select('count', { count: 'exact', head: true })
-    const { data: categories, error: cErr } = await supabase.from('categories').select('count', { count: 'exact', head: true })
-    const { data: banners, error: bErr } = await supabase.from('banners').select('count', { count: 'exact', head: true })
+    const { count: products, error: pErr } = await supabase.from('products').select('*', { count: 'exact', head: true })
+    const { count: categories, error: cErr } = await supabase.from('categories').select('*', { count: 'exact', head: true })
+    const { count: banners, error: bErr } = await supabase.from('banners').select('*', { count: 'exact', head: true })
     const { data: { user } } = await supabase.auth.getUser()
 
     return NextResponse.json({
@@ -18,9 +18,9 @@ export async function GET() {
         serviceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       },
       database: {
-        products: products?.count ?? 0,
-        categories: categories?.count ?? 0,
-        banners: banners?.count ?? 0,
+        products: products ?? 0,
+        categories: categories ?? 0,
+        banners: banners ?? 0,
         errors: { products: pErr?.message, categories: cErr?.message, banners: bErr?.message },
       },
       auth: { loggedIn: !!user },
