@@ -6,8 +6,7 @@ import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Banner, Product, Category } from "@/types/database"
 
-export const dynamic = 'force-static'
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
   const [banners, featuredData, categories] = await Promise.all([
