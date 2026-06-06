@@ -1,10 +1,11 @@
 'use client'
 
-import { Menu, LogOut } from 'lucide-react'
+import { Menu, LogOut, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import AdminSidebar from './AdminSidebar'
 
 export default function AdminNavbar() {
@@ -30,6 +31,14 @@ export default function AdminNavbar() {
       </Sheet>
 
       <div className="flex-1" />
+
+      <Link
+        href="/admin/guide"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+        title="Petunjuk Penggunaan"
+      >
+        <HelpCircle className="h-4 w-4" />
+      </Link>
 
       <Button variant="ghost" size="icon" onClick={handleLogout}>
         <LogOut className="h-5 w-5" />

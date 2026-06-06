@@ -25,8 +25,8 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold mb-3">Bantuan</h3>
             <ul className="space-y-2 text-sm text-gray-600">
+              <li><Link href="/faq" className="hover:text-emerald-600">FAQ</Link></li>
               <li><Link href="/cart" className="hover:text-emerald-600">Keranjang</Link></li>
-              <li><span className="text-gray-400">Cara Belanja</span></li>
               <li><span className="text-gray-400">Syarat & Ketentuan</span></li>
             </ul>
           </div>

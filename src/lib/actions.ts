@@ -3,7 +3,7 @@
 import { createServerSupabaseClient } from './supabase/server'
 import { revalidatePath } from 'next/cache'
 import { slugify, calculateFinalPrice, generateOrderNumber } from './utils'
-import type { Address, Wishlist, Review, Profile } from '@/types/database'
+import type { Address, Wishlist, Review, Profile, FAQ } from '@/types/database'
 
 // --- AUTH ---
 
@@ -329,6 +329,95 @@ export async function deleteReview(reviewId: string) {
   const supabase = await createServerSupabaseClient()
   await supabase.from('reviews').delete().eq('id', reviewId)
   revalidatePath('/')
+}
+
+// --- FAQ ---
+
+export async function createFAQ(formData: FormData) {
+  const supabase = await createServerSupabaseClient()
+  const question = formData.get('question') as string
+  const answer = formData.get('answer') as string
+  const sortOrder = parseInt(formData.get('sort_order') as string || '0')
+
+  const { error } = await supabase.from('faqs').insert({ question, answer, sort_order: sortOrder })
+  if (error) return { error: error.message }
+  revalidatePath('/admin/faq')
+  revalidatePath('/faq')
+  return { success: true }
+}
+
+export async function updateFAQ(id: string, formData: FormData) {
+  const supabase = await createServerSupabaseClient()
+  const question = formData.get('question') as string
+  const answer = formData.get('answer') as string
+  const sortOrder = parseInt(formData.get('sort_order') as string || '0')
+  const isActive = formData.get('is_active') === 'on'
+
+  const { error } = await supabase.from('faqs').update({ question, answer, sort_order: sortOrder, is_active: isActive }).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/faq')
+  revalidatePath('/faq')
+  return { success: true }
+}
+
+export async function deleteFAQ(id: string) {
+  const supabase = await createServerSupabaseClient()
+  await supabase.from('faqs').delete().eq('id', id)
+  revalidatePath('/admin/faq')
+  revalidatePath('/faq')
+}
+
+export async function getFAQs(activeOnly = false) {
+  const supabase = await createServerSupabaseClient()
+  let query = supabase.from('faqs').select('*').order('sort_order')
+  if (activeOnly) query = query.eq('is_active', true)
+  const { data } = await query
+  return (data || []) as FAQ[]
+}
+
+// --- SETTINGS ---
+
+export async function saveSetting(key: string, value: any) {
+  const supabase = await createServerSupabaseClient()
+  const { error } = await supabase.from('site_settings').upsert({ key, value: JSON.stringify(value) })
+  if (error) return { error: error.message }
+  revalidatePath('/')
+  revalidatePath('/admin/settings')
+  return { success: true }
+}
+
+export async function getSetting(key: string) {
+  const supabase = await createServerSupabaseClient()
+  const { data } = await supabase.from('site_settings').select('value').eq('key', key).single()
+  if (!data) return null
+  return data.value
+}
+
+export async function getSettings() {
+  const supabase = await createServerSupabaseClient()
+  const { data } = await supabase.from('site_settings').select('*')
+  const settings: Record<string, any> = {}
+  for (const row of (data || [])) {
+    settings[row.key] = row.value
+  }
+  return settings
+}
+
+export async function saveLandingSettings(formData: FormData) {
+  const supabase = await createServerSupabaseClient()
+  const template = formData.get('landing_template') as string
+  const heroTitle = formData.get('landing_hero_title') as string
+  const heroSubtitle = formData.get('landing_hero_subtitle') as string
+  const singleProductId = formData.get('landing_single_product_id') as string
+
+  await supabase.from('site_settings').upsert({ key: 'landing_template', value: JSON.stringify(template) })
+  await supabase.from('site_settings').upsert({ key: 'landing_hero_title', value: JSON.stringify(heroTitle) })
+  await supabase.from('site_settings').upsert({ key: 'landing_hero_subtitle', value: JSON.stringify(heroSubtitle) })
+  await supabase.from('site_settings').upsert({ key: 'landing_single_product_id', value: JSON.stringify(singleProductId || null) })
+
+  revalidatePath('/')
+  revalidatePath('/admin/settings')
+  return { success: true }
 }
 
 // --- CHECKOUT ---

@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Package, Tags, Image as ImageIcon, ShoppingCart, Settings, ArrowLeft
+  LayoutDashboard, Package, Tags, Image as ImageIcon, ShoppingCart, Settings, ArrowLeft,
+  HelpCircle, FileText, MessageSquare
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +14,7 @@ const sidebarLinks = [
   { href: '/admin/categories', label: 'Kategori', icon: Tags },
   { href: '/admin/banners', label: 'Banner', icon: ImageIcon },
   { href: '/admin/orders', label: 'Pesanan', icon: ShoppingCart },
+  { href: '/admin/faq', label: 'FAQ', icon: MessageSquare },
   { href: '/admin/settings', label: 'Pengaturan', icon: Settings },
 ]
 
@@ -50,7 +52,19 @@ export default function AdminSidebar() {
         })}
       </nav>
 
-      <div className="p-3 border-t">
+      <div className="p-3 border-t space-y-1">
+        <Link
+          href="/admin/guide"
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full',
+            pathname === '/admin/guide'
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'text-gray-600 hover:bg-gray-100'
+          )}
+        >
+          <FileText className="h-4 w-4" />
+          Petunjuk
+        </Link>
         <Link
           href="/"
           className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"

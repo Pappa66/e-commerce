@@ -9,6 +9,8 @@ DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
 DROP FUNCTION IF EXISTS handle_new_user();
 DROP FUNCTION IF EXISTS update_updated_at();
 
+DROP TABLE IF EXISTS faqs CASCADE;
+DROP TABLE IF EXISTS site_settings CASCADE;
 DROP TABLE IF EXISTS reviews CASCADE;
 DROP TABLE IF EXISTS wishlists CASCADE;
 DROP TABLE IF EXISTS cart_items CASCADE;
@@ -181,6 +183,35 @@ CREATE TABLE reviews (
   UNIQUE(user_id, product_id)
 );
 
+-- 12. FAQs
+CREATE TABLE faqs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 13. Site Settings (key-value untuk template landing, dll)
+CREATE TABLE site_settings (
+  key VARCHAR(255) PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Insert default settings
+INSERT INTO site_settings (key, value) VALUES
+  ('landing_template', '"default"'),
+  ('landing_hero_title', '"Temukan Fashion Muslim Terbaik"'),
+  ('landing_hero_subtitle', '"Koleksi terbaru dengan kualitas premium. Belanja aman, mudah, dan terpercaya."'),
+  ('landing_single_product_id', 'null'),
+  ('store_name', '"D2C Pro"'),
+  ('store_description', '"Toko fashion muslim terpercaya"'),
+  ('store_whatsapp', '"081234567890"'),
+  ('store_email', '"hello@d2cpro.com"');
+
 -- Indexes
 CREATE INDEX idx_products_slug ON products(slug);
 CREATE INDEX idx_products_category ON products(category_id);
@@ -260,6 +291,8 @@ ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE carts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wishlists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
 
@@ -314,6 +347,12 @@ CREATE POLICY "Users delete own reviews" ON reviews
 
 CREATE POLICY "Users own cart" ON carts
   FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Public faqs" ON faqs FOR SELECT USING (is_active = true);
+CREATE POLICY "Admin all faqs" ON faqs FOR ALL USING (public.is_admin());
+
+CREATE POLICY "Public site_settings" ON site_settings FOR SELECT USING (true);
+CREATE POLICY "Admin all site_settings" ON site_settings FOR ALL USING (public.is_admin());
+
 CREATE POLICY "Users own cart items" ON cart_items
   FOR ALL USING (cart_id IN (SELECT id FROM carts WHERE user_id = auth.uid()));
 

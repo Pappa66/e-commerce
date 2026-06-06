@@ -136,6 +136,22 @@ export interface Order {
   shipping_address?: Address
 }
 
+export interface FAQ {
+  id: string
+  question: string
+  answer: string
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface SiteSetting {
+  key: string
+  value: any
+  updated_at: string
+}
+
 export interface OrderItem {
   id: string
   order_id: string
