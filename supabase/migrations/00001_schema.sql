@@ -1,19 +1,8 @@
--- ⚠️ RESET DATABASE - Hapus semua yang ada
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-DROP TRIGGER IF EXISTS update_products_updated_at ON products;
-DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
-DROP TRIGGER IF EXISTS update_banners_updated_at ON banners;
-DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
-DROP TRIGGER IF EXISTS update_carts_updated_at ON carts;
-DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
-DROP TRIGGER IF EXISTS update_reviews_updated_at ON reviews;
-DROP FUNCTION IF EXISTS handle_new_user();
-DROP FUNCTION IF EXISTS update_updated_at() CASCADE;
-
-DROP TABLE IF EXISTS faqs CASCADE;
-DROP TABLE IF EXISTS site_settings CASCADE;
+-- ⚠️ RESET ALL TABLES
 DROP TABLE IF EXISTS reviews CASCADE;
 DROP TABLE IF EXISTS wishlists CASCADE;
+DROP TABLE IF EXISTS faqs CASCADE;
+DROP TABLE IF EXISTS site_settings CASCADE;
 DROP TABLE IF EXISTS cart_items CASCADE;
 DROP TABLE IF EXISTS carts CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
@@ -28,7 +17,6 @@ DROP TABLE IF EXISTS categories CASCADE;
 -- E-Commerce D2C Pro - Full Schema
 -- ============================================================
 
--- 1. Categories
 CREATE TABLE categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
@@ -41,7 +29,6 @@ CREATE TABLE categories (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Products
 CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
@@ -64,7 +51,6 @@ CREATE TABLE products (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Banners
 CREATE TABLE banners (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(255),
@@ -77,7 +63,6 @@ CREATE TABLE banners (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. User Profiles (extends auth.users)
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email VARCHAR(255),
@@ -89,7 +74,6 @@ CREATE TABLE profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Addresses
 CREATE TABLE addresses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -105,7 +89,6 @@ CREATE TABLE addresses (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. Carts
 CREATE TABLE carts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -114,7 +97,6 @@ CREATE TABLE carts (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Cart Items
 CREATE TABLE cart_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cart_id UUID REFERENCES carts(id) ON DELETE CASCADE,
@@ -123,14 +105,13 @@ CREATE TABLE cart_items (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8. Orders
 CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   order_number VARCHAR(50) UNIQUE NOT NULL,
-  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned')),
-  payment_method VARCHAR(50) DEFAULT 'cod' CHECK (payment_method IN ('cod', 'midtrans', 'transfer')),
-  payment_status VARCHAR(50) DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid', 'paid', 'failed', 'refunded')),
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending','confirmed','processing','shipped','delivered','cancelled','returned')),
+  payment_method VARCHAR(50) DEFAULT 'cod' CHECK (payment_method IN ('cod','midtrans','transfer')),
+  payment_status VARCHAR(50) DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid','paid','failed','refunded')),
   midtrans_transaction_id VARCHAR(255),
   subtotal DECIMAL(12,2) NOT NULL,
   shipping_cost DECIMAL(12,2) DEFAULT 0,
@@ -149,7 +130,6 @@ CREATE TABLE orders (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 9. Order Items
 CREATE TABLE order_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
@@ -162,7 +142,6 @@ CREATE TABLE order_items (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 10. Wishlists
 CREATE TABLE wishlists (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
@@ -171,7 +150,6 @@ CREATE TABLE wishlists (
   UNIQUE(user_id, product_id)
 );
 
--- 11. Reviews
 CREATE TABLE reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
@@ -184,7 +162,6 @@ CREATE TABLE reviews (
   UNIQUE(user_id, product_id)
 );
 
--- 12. FAQs
 CREATE TABLE faqs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   question TEXT NOT NULL,
@@ -195,23 +172,11 @@ CREATE TABLE faqs (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 13. Site Settings (key-value untuk template landing, dll)
 CREATE TABLE site_settings (
   key VARCHAR(255) PRIMARY KEY,
   value JSONB NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
--- Insert default settings
-INSERT INTO site_settings (key, value) VALUES
-  ('landing_template', '"default"'),
-  ('landing_hero_title', '"Temukan Fashion Muslim Terbaik"'),
-  ('landing_hero_subtitle', '"Koleksi terbaru dengan kualitas premium. Belanja aman, mudah, dan terpercaya."'),
-  ('landing_single_product_id', 'null'),
-  ('store_name', '"D2C Pro"'),
-  ('store_description', '"Toko fashion muslim terpercaya"'),
-  ('store_whatsapp', '"081234567890"'),
-  ('store_email', '"hello@d2cpro.com"');
 
 -- Indexes
 CREATE INDEX idx_products_slug ON products(slug);
@@ -228,7 +193,7 @@ CREATE INDEX idx_wishlists_product ON wishlists(product_id);
 CREATE INDEX idx_reviews_product ON reviews(product_id);
 CREATE INDEX idx_reviews_user ON reviews(user_id);
 
--- Triggers for updated_at
+-- Trigger function
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -237,51 +202,32 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_products_updated_at
-  BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_categories_updated_at
-  BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_banners_updated_at
-  BEFORE UPDATE ON banners FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_profiles_updated_at
-  BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_carts_updated_at
-  BEFORE UPDATE ON carts FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_orders_updated_at
-  BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_reviews_updated_at
-  BEFORE UPDATE ON reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER update_faqs_updated_at
-  BEFORE UPDATE ON faqs FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_banners_updated_at BEFORE UPDATE ON banners FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_carts_updated_at BEFORE UPDATE ON carts FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_faqs_updated_at BEFORE UPDATE ON faqs FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, full_name, avatar_url, role)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
-    NEW.raw_user_meta_data->>'avatar_url',
-    COALESCE(NEW.raw_user_meta_data->>'role', 'customer')
-  );
+  VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), NEW.raw_user_meta_data->>'avatar_url', COALESCE(NEW.raw_user_meta_data->>'role', 'customer'));
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE OR REPLACE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
--- Helper function to check admin role (bypasses RLS recursion)
+-- is_admin helper (bypasses RLS recursion)
 CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS BOOLEAN
-LANGUAGE sql SECURITY DEFINER STABLE
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'admin'
-  );
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin');
 $$;
 
 -- Row Level Security
@@ -293,72 +239,49 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE carts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wishlists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 CREATE POLICY "Public products" ON products FOR SELECT USING (is_active = true);
-CREATE POLICY "Admin all products" ON products FOR ALL USING (
-  public.is_admin()
-);
-
+CREATE POLICY "Admin all products" ON products FOR ALL USING (public.is_admin());
 CREATE POLICY "Public categories" ON categories FOR SELECT USING (is_active = true);
-CREATE POLICY "Admin all categories" ON categories FOR ALL USING (
-  public.is_admin()
-);
-
+CREATE POLICY "Admin all categories" ON categories FOR ALL USING (public.is_admin());
 CREATE POLICY "Public banners" ON banners FOR SELECT USING (is_active = true);
-CREATE POLICY "Admin all banners" ON banners FOR ALL USING (
-  public.is_admin()
-);
-
-CREATE POLICY "Users own profile" ON profiles
-  FOR SELECT USING (auth.uid() = id OR public.is_admin());
-CREATE POLICY "Users update own profile" ON profiles
-  FOR UPDATE USING (auth.uid() = id);
-
-CREATE POLICY "Users own orders" ON orders
-  FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
+CREATE POLICY "Admin all banners" ON banners FOR ALL USING (public.is_admin());
+CREATE POLICY "Users own profile" ON profiles FOR SELECT USING (auth.uid() = id OR public.is_admin());
+CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users own orders" ON orders FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
 CREATE POLICY "Users insert orders" ON orders FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Admin update orders" ON orders FOR UPDATE USING (
-  public.is_admin()
-);
-
-CREATE POLICY "Users own order items" ON order_items
-  FOR SELECT USING (order_id IN (SELECT id FROM orders WHERE user_id = auth.uid()));
-CREATE POLICY "Admin all order items" ON order_items FOR ALL USING (
-  public.is_admin()
-);
-
-CREATE POLICY "Users own addresses" ON addresses
-  FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "Users own wishlists" ON wishlists
-  FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "Public reviews" ON reviews
-  FOR SELECT USING (is_active = true);
-CREATE POLICY "Users own reviews" ON reviews
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users update own reviews" ON reviews
-  FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users delete own reviews" ON reviews
-  FOR DELETE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users own cart" ON carts
-  FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Admin update orders" ON orders FOR UPDATE USING (public.is_admin());
+CREATE POLICY "Users own order items" ON order_items FOR SELECT USING (order_id IN (SELECT id FROM orders WHERE user_id = auth.uid()));
+CREATE POLICY "Admin all order items" ON order_items FOR ALL USING (public.is_admin());
+CREATE POLICY "Users own addresses" ON addresses FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users own cart" ON carts FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users own cart items" ON cart_items FOR ALL USING (cart_id IN (SELECT id FROM carts WHERE user_id = auth.uid()));
+CREATE POLICY "Users own wishlists" ON wishlists FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Public reviews" ON reviews FOR SELECT USING (is_active = true);
+CREATE POLICY "Users own reviews" ON reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users update own reviews" ON reviews FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users delete own reviews" ON reviews FOR DELETE USING (auth.uid() = user_id);
 CREATE POLICY "Public faqs" ON faqs FOR SELECT USING (is_active = true);
 CREATE POLICY "Admin all faqs" ON faqs FOR ALL USING (public.is_admin());
-
 CREATE POLICY "Public site_settings" ON site_settings FOR SELECT USING (true);
 CREATE POLICY "Admin all site_settings" ON site_settings FOR ALL USING (public.is_admin());
 
-CREATE POLICY "Users own cart items" ON cart_items
-  FOR ALL USING (cart_id IN (SELECT id FROM carts WHERE user_id = auth.uid()));
-
--- Storage bucket for product images
+-- Storage buckets
 INSERT INTO storage.buckets (id, name, public) VALUES ('products', 'products', true) ON CONFLICT DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('banners', 'banners', true) ON CONFLICT DO NOTHING;
+
+-- Default settings
+INSERT INTO site_settings (key, value) VALUES ('landing_template', '"default"') ON CONFLICT DO NOTHING;
+INSERT INTO site_settings (key, value) VALUES ('landing_hero_title', '"Temukan Fashion Muslim Terbaik"') ON CONFLICT DO NOTHING;
+INSERT INTO site_settings (key, value) VALUES ('landing_hero_subtitle', '"Koleksi terbaru dengan kualitas premium."') ON CONFLICT DO NOTHING;
+INSERT INTO site_settings (key, value) VALUES ('landing_single_product_id', 'null') ON CONFLICT DO NOTHING;
+INSERT INTO site_settings (key, value) VALUES ('store_name', '"D2C Pro"') ON CONFLICT DO NOTHING;
+INSERT INTO site_settings (key, value) VALUES ('store_description', '"Toko fashion muslim terpercaya"') ON CONFLICT DO NOTHING;
+INSERT INTO site_settings (key, value) VALUES ('store_whatsapp', '"081234567890"') ON CONFLICT DO NOTHING;
+INSERT INTO site_settings (key, value) VALUES ('store_email', '"hello@d2cpro.com"') ON CONFLICT DO NOTHING;
