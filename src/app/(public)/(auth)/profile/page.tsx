@@ -65,8 +65,14 @@ export default function ProfilePage() {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center">
-            <User className="h-8 w-8 text-emerald-600" />
+          <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center overflow-hidden">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-xl font-bold text-emerald-600">
+                {(profile?.full_name || user.email)?.[0]?.toUpperCase() || "U"}
+              </span>
+            )}
           </div>
           <div>
             <h1 className="text-2xl font-bold">{profile?.full_name || user.email}</h1>
@@ -104,6 +110,10 @@ export default function ProfilePage() {
               <div>
                 <Label htmlFor="phone">No. Telepon</Label>
                 <Input id="phone" name="phone" defaultValue={profile?.phone || ""} placeholder="0812..." />
+              </div>
+              <div>
+                <Label htmlFor="avatar_url">Foto Profil (URL)</Label>
+                <Input id="avatar_url" name="avatar_url" defaultValue={profile?.avatar_url || ""} placeholder="https://..." />
               </div>
               <div>
                 <Label htmlFor="gender">Jenis Kelamin</Label>

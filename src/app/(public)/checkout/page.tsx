@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { formatPrice, getImageUrl } from "@/lib/utils"
-import { INDONESIAN_PROVINCES } from "@/lib/constants"
 import { createOrder, validateCoupon, createMidtransTransaction } from "@/lib/actions"
 import { toast } from "sonner"
 import { ArrowLeft, MapPin, CreditCard, Truck, Shield, Tag, X, Gift } from "lucide-react"
@@ -39,19 +38,6 @@ export default function CheckoutPage() {
   const [discountAmount, setDiscountAmount] = useState(0)
   const [couponLoading, setCouponLoading] = useState(false)
 
-  // New address form
-  const [showNewAddress, setShowNewAddress] = useState(false)
-  const [newAddress, setNewAddress] = useState({
-    label: "",
-    recipient_name: "",
-    phone: "",
-    street_address: "",
-    city: "",
-    district: "",
-    province: "",
-    postal_code: "",
-  })
-
   const subtotal = getTotal()
   const total = Math.max(0, subtotal - discountAmount)
 
@@ -69,20 +55,6 @@ export default function CheckoutPage() {
       })
     })
   }, [router])
-
-  const handleSaveAddress = async () => {
-    const supabase = createClient()
-    const { error } = await supabase.from("addresses").insert({
-      user_id: user.id, ...newAddress,
-    }).select().single()
-
-    if (error) { toast.error("Gagal menyimpan alamat"); return }
-    toast.success("Alamat berhasil disimpan")
-    setShowNewAddress(false)
-    setNewAddress({ label: "", recipient_name: "", phone: "", street_address: "", city: "", district: "", province: "", postal_code: "" })
-    const { data } = await supabase.from("addresses").select("*").eq("user_id", user.id)
-    if (data) setAddresses(data as Address[])
-  }
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) { toast.error("Masukkan kode kupon"); return }
@@ -165,7 +137,7 @@ export default function CheckoutPage() {
               <h2 className="font-semibold text-lg">Alamat Pengiriman</h2>
             </div>
 
-            {addresses.length > 0 && !showNewAddress ? (
+            {addresses.length > 0 ? (
               <div className="space-y-3">
                 {addresses.map(addr => (
                   <label key={addr.id} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedAddress === addr.id ? "border-emerald-500 bg-emerald-50" : "hover:bg-gray-50"}`}>
@@ -177,40 +149,21 @@ export default function CheckoutPage() {
                     </div>
                   </label>
                 ))}
-                <Button variant="outline" size="sm" onClick={() => setShowNewAddress(true)}>+ Tambah Alamat Baru</Button>
+                <Link href="/profile" className="text-xs text-emerald-600 hover:underline block text-right">
+                  Kelola alamat di profil →
+                </Link>
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Label</Label><Input value={newAddress.label} onChange={e => setNewAddress(p => ({ ...p, label: e.target.value }))} placeholder="Rumah/Kantor" /></div>
-                  <div><Label>Nama Penerima</Label><Input value={newAddress.recipient_name} onChange={e => setNewAddress(p => ({ ...p, recipient_name: e.target.value }))} placeholder="Nama" /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>No. Telepon</Label><Input value={newAddress.phone} onChange={e => setNewAddress(p => ({ ...p, phone: e.target.value }))} placeholder="0812..." /></div>
-                  <div><Label>Provinsi</Label>
-                    <select value={newAddress.province} onChange={e => setNewAddress(p => ({ ...p, province: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-                      <option value="">Pilih</option>
-                      {INDONESIAN_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Kota</Label><Input value={newAddress.city} onChange={e => setNewAddress(p => ({ ...p, city: e.target.value }))} placeholder="Kota" /></div>
-                  <div><Label>Kecamatan</Label><Input value={newAddress.district} onChange={e => setNewAddress(p => ({ ...p, district: e.target.value }))} placeholder="Kecamatan" /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Alamat Lengkap</Label><Input value={newAddress.street_address} onChange={e => setNewAddress(p => ({ ...p, street_address: e.target.value }))} placeholder="Jl. ..." /></div>
-                  <div><Label>Kode Pos</Label><Input value={newAddress.postal_code} onChange={e => setNewAddress(p => ({ ...p, postal_code: e.target.value }))} placeholder="12345" /></div>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveAddress} className="bg-emerald-600 hover:bg-emerald-700">Simpan Alamat</Button>
-                  {addresses.length > 0 && <Button variant="outline" onClick={() => setShowNewAddress(false)}>Batal</Button>}
-                </div>
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-400 mb-2">Belum ada alamat tersimpan</p>
+                <Link href="/profile">
+                  <Button variant="outline" size="sm">Tambah Alamat di Profil</Button>
+                </Link>
               </div>
             )}
 
             {/* Ship to different person */}
-            {selectedAddr && !showNewAddress && (
+            {selectedAddr && (
               <div className="mt-4 pt-4 border-t">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={shipToOther} onChange={e => setShipToOther(e.target.checked)} className="rounded" />
@@ -280,8 +233,8 @@ export default function CheckoutPage() {
                 <div className="flex items-center gap-2">
                   <Shield className="h-5 w-5 text-blue-600" />
                   <div>
-                    <p className="font-medium text-sm">Kartu / Virtual Account (Midtrans)</p>
-                    <p className="text-xs text-gray-400">Pembayaran instan via Midtrans</p>
+                    <p className="font-medium text-sm">Midtrans (Semua Pembayaran)</p>
+                    <p className="text-xs text-gray-400">Virtual Account, Kartu Kredit, GoPay, QRIS, Indomaret, Alfamart, dll</p>
                   </div>
                 </div>
               </label>
