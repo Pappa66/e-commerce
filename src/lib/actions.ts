@@ -2,6 +2,14 @@
 
 import { createServerSupabaseClient } from './supabase/server'
 import { createAdminClient } from './supabase/admin'
+
+async function ensureBucket(name: string) {
+  const admin = createAdminClient()
+  const { data: buckets } = await admin.storage.listBuckets()
+  if (!buckets?.some(b => b.id === name)) {
+    await admin.storage.createBucket(name, { public: true })
+  }
+}
 import { revalidatePath } from 'next/cache'
 import { slugify, calculateFinalPrice, generateOrderNumber } from './utils'
 import type { Address, Wishlist, Review, Profile, FAQ, Coupon } from '@/types/database'
@@ -23,6 +31,7 @@ export async function updateProfile(formData: FormData) {
   let finalAvatarUrl = avatarUrl || null
 
   if (avatarFile && avatarFile instanceof File && avatarFile.size > 0) {
+    await ensureBucket('avatars')
     const adminClient = createAdminClient()
     const ext = avatarFile.name.split('.').pop() || 'jpg'
     const filePath = `${user.id}/${Date.now()}.${ext}`
