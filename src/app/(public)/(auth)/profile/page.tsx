@@ -100,18 +100,33 @@ export default function ProfilePage() {
 
       <div className="container mx-auto px-4 -mt-5">
         {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <Link href="/order" className="bg-white rounded-xl p-4 elevated-shadow text-center hover:shadow-lg transition-shadow">
-            <Package className="h-5 w-5 text-emerald-600 mx-auto mb-1" />
-            <p className="text-xs text-gray-500">Pesanan</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <Link href="/order" className="group bg-white rounded-2xl p-4 elevated-shadow hover:shadow-lg transition-all hover:-translate-y-0.5 flex items-center gap-4 sm:block sm:text-center">
+            <div className="h-12 w-12 sm:mx-auto sm:mb-2 rounded-2xl bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors shrink-0">
+              <Package className="h-6 w-6 text-emerald-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Pesanan</p>
+              <p className="text-xs text-gray-400">Lihat riwayat</p>
+            </div>
           </Link>
-          <Link href="/wishlist" className="bg-white rounded-xl p-4 elevated-shadow text-center hover:shadow-lg transition-shadow">
-            <Heart className="h-5 w-5 text-rose-500 mx-auto mb-1" />
-            <p className="text-xs text-gray-500">Favorit</p>
+          <Link href="/wishlist" className="group bg-white rounded-2xl p-4 elevated-shadow hover:shadow-lg transition-all hover:-translate-y-0.5 flex items-center gap-4 sm:block sm:text-center">
+            <div className="h-12 w-12 sm:mx-auto sm:mb-2 rounded-2xl bg-rose-50 flex items-center justify-center group-hover:bg-rose-100 transition-colors shrink-0">
+              <Heart className="h-6 w-6 text-rose-500" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Favorit</p>
+              <p className="text-xs text-gray-400">Produk disukai</p>
+            </div>
           </Link>
-          <div className="bg-white rounded-xl p-4 elevated-shadow text-center">
-            <MapPin className="h-5 w-5 text-amber-500 mx-auto mb-1" />
-            <p className="text-xs text-gray-500">{addresses.length} Alamat</p>
+          <div className="group bg-white rounded-2xl p-4 elevated-shadow sm:text-center flex items-center gap-4 sm:block">
+            <div className="h-12 w-12 sm:mx-auto sm:mb-2 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
+              <MapPin className="h-6 w-6 text-amber-500" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">{addresses.length} Alamat</p>
+              <p className="text-xs text-gray-400">Tersimpan</p>
+            </div>
           </div>
         </div>
 
@@ -181,7 +196,7 @@ export default function ProfilePage() {
                 Alamat Saya
               </h2>
               {!showAddressForm && (
-                <Button onClick={() => { setEditingAddress(null); setShowAddressForm(true) }} className="bg-brand-gradient hover:opacity-90 text-white shadow-sm text-sm h-9">
+                <Button onClick={() => { setEditingAddress(null); setShowAddressForm(true) }} className="bg-brand-gradient hover:opacity-90 text-white shadow-sm text-sm h-9 shrink-0">
                   <Plus className="h-4 w-4 mr-1.5" /> Tambah
                 </Button>
               )}
@@ -267,9 +282,6 @@ export default function ProfilePage() {
               <div className="bg-white rounded-2xl p-10 elevated-shadow text-center">
                 <MapPin className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500">Belum ada alamat tersimpan</p>
-                <Button onClick={() => { setEditingAddress(null); setShowAddressForm(true) }} className="mt-4 bg-brand-gradient hover:opacity-90 text-white shadow-sm">
-                  <Plus className="h-4 w-4 mr-1.5" /> Tambah Alamat
-                </Button>
               </div>
             )}
 
