@@ -31,6 +31,20 @@ export interface Product {
   created_at: string
   updated_at: string
   category?: Category
+  variants?: ProductVariant[]
+}
+
+export interface ProductVariant {
+  id: string
+  product_id: string
+  name: string
+  size: string | null
+  color: string | null
+  price_adjustment: number
+  stock: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface Banner {
@@ -52,6 +66,8 @@ export interface Profile {
   phone: string | null
   avatar_url: string | null
   role: 'customer' | 'admin'
+  gender: 'male' | 'female' | null
+  birth_date: string | null
   created_at: string
   updated_at: string
 }
@@ -104,9 +120,11 @@ export interface CartItem {
   id: string
   cart_id: string
   product_id: string
+  variant_id: string | null
   quantity: number
   created_at: string
   product?: Product
+  variant?: ProductVariant
 }
 
 export interface Order {
@@ -120,7 +138,9 @@ export interface Order {
   subtotal: number
   shipping_cost: number
   tax_amount: number
+  discount_amount: number
   total_amount: number
+  coupon_id: string | null
   shipping_address_id: string | null
   shipping_courier: string | null
   shipping_service: string | null
@@ -134,6 +154,7 @@ export interface Order {
   updated_at: string
   items?: OrderItem[]
   shipping_address?: Address
+  coupon?: Coupon
 }
 
 export interface FAQ {
@@ -157,9 +178,26 @@ export interface OrderItem {
   order_id: string
   product_id: string | null
   product_name: string
+  variant_name: string | null
   product_image: string | null
   quantity: number
   unit_price: number
   subtotal: number
   created_at: string
+}
+
+export interface Coupon {
+  id: string
+  code: string
+  type: 'percentage' | 'fixed' | 'free_shipping'
+  value: number
+  min_purchase: number
+  max_discount: number | null
+  usage_limit: number
+  used_count: number
+  is_active: boolean
+  starts_at: string | null
+  expires_at: string | null
+  created_at: string
+  updated_at: string
 }

@@ -39,7 +39,10 @@ export default function CartDrawer() {
               </div>
               <div className="flex flex-1 flex-col justify-between min-w-0">
                 <div className="flex justify-between gap-2">
-                  <p className="text-sm font-medium line-clamp-2">{item.product?.name}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium line-clamp-2">{item.product?.name}</p>
+                    {(item as any).variant?.name && <p className="text-xs text-gray-400 truncate">{(item as any).variant.name}</p>}
+                  </div>
                   <button onClick={() => removeItem(item.id)} className="shrink-0 text-gray-400 hover:text-red-500">
                     <Trash2 className="h-4 w-4" />
                   </button>

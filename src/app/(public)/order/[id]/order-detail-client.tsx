@@ -2,10 +2,13 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { CheckCircle, Clock, Package, Truck, MapPin, CreditCard, AlertCircle } from "lucide-react"
+import { useState } from "react"
+import { CheckCircle, Clock, Package, Truck, MapPin, CreditCard, AlertCircle, ExternalLink, Tag } from "lucide-react"
 import { formatPrice, getImageUrl } from "@/lib/utils"
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_METHOD_LABELS } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
+import { createMidtransTransaction } from "@/lib/actions"
+import { toast } from "sonner"
 import type { Order } from "@/types/database"
 
 const statusIcons: Record<string, any> = {
@@ -20,8 +23,17 @@ const statusIcons: Record<string, any> = {
 const statusSteps = ["pending", "confirmed", "processing", "shipped", "delivered"]
 
 export default function OrderDetailClient({ order }: { order: Order }) {
+  const [payLoading, setPayLoading] = useState(false)
   const currentStepIndex = statusSteps.indexOf(order.status)
   const StatusIcon = statusIcons[order.status] || Clock
+
+  const handlePayNow = async () => {
+    setPayLoading(true)
+    const result = await createMidtransTransaction(order.id)
+    setPayLoading(false)
+    if (result.error) { toast.error(result.error); return }
+    if (result.redirect_url) window.location.href = result.redirect_url
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -103,6 +115,12 @@ export default function OrderDetailClient({ order }: { order: Order }) {
             <p>Metode: {PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method}</p>
             <p>Status: <span className={`font-medium ${order.payment_status === "paid" ? "text-green-600" : "text-yellow-600"}`}>{order.payment_status === "paid" ? "Lunas" : order.payment_status === "unpaid" ? "Belum Dibayar" : order.payment_status}</span></p>
             {order.paid_at && <p>Dibayar: {new Date(order.paid_at).toLocaleDateString("id-ID")}</p>}
+            {order.payment_method === "midtrans" && order.payment_status === "unpaid" && (
+              <Button onClick={handlePayNow} disabled={payLoading} className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-sm w-full">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {payLoading ? "Memproses..." : "Bayar Sekarang"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -117,6 +135,7 @@ export default function OrderDetailClient({ order }: { order: Order }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm">{item.product_name}</p>
+                {(item as any).variant_name && <p className="text-xs text-gray-400">{(item as any).variant_name}</p>}
                 <p className="text-xs text-gray-500">{item.quantity}x {formatPrice(item.unit_price)}</p>
               </div>
               <p className="font-medium text-sm">{formatPrice(item.subtotal)}</p>
@@ -127,6 +146,12 @@ export default function OrderDetailClient({ order }: { order: Order }) {
         <div className="border-t mt-4 pt-4 space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span>{formatPrice(order.subtotal)}</span></div>
           <div className="flex justify-between"><span className="text-gray-600">Ongkos Kirim</span><span>{formatPrice(order.shipping_cost)}</span></div>
+          {order.discount_amount > 0 && (
+            <div className="flex justify-between text-emerald-600">
+              <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> Diskon</span>
+              <span>-{formatPrice(order.discount_amount)}</span>
+            </div>
+          )}
           <div className="flex justify-between"><span className="text-gray-600">Pajak</span><span>{formatPrice(order.tax_amount)}</span></div>
           <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span className="text-emerald-600">{formatPrice(order.total_amount)}</span></div>
         </div>

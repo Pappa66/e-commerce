@@ -2,29 +2,21 @@
 -- SEED DATA - D2C Pro E-Commerce
 -- Jalankan SETELAH schema migration sukses
 -- ============================================================
+--
+-- ⚠️ LANGKAH PERTAMA sebelum seed: buat user admin via UI
+--    Supabase Dashboard → Authentication → Users → Add User
+--    Email: admin@d2cpro.com, Password: admin123
+--    (JANGAN INSERT langsung ke auth.users — rusak auth schema)
+--
+-- ⚠️ LANGKAH KEDUA setelah seed: set role admin
+--    UPDATE profiles SET role = 'admin' WHERE email = 'admin@d2cpro.com';
+--
 
--- 0. Hapus user admin lama (kalau ada)
-DELETE FROM auth.users WHERE email = 'admin@d2cpro.com';
-
--- 1. Buat Admin User
--- Password di-hash pakai bcrypt via pgcrypto
-INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_user_meta_data, created_at, updated_at)
-VALUES (
-  '00000000-0000-0000-0000-000000000000',
-  gen_random_uuid(),
-  'authenticated',
-  'authenticated',
-  'admin@d2cpro.com',
-  crypt('admin123', gen_salt('bf')),
-  now(),
-  jsonb_build_object('full_name', 'Admin Toko', 'role', 'admin'),
-  now(),
-  now()
-);
-
--- Trigger on_auth_user_created otomatis bikin profile
--- Tinggal update role-nya jadi admin
-UPDATE profiles SET role = 'admin' WHERE email = 'admin@d2cpro.com';
+-- ⚠️ JANGAN INSERT LANGSUNG KE auth.users — nanti error "Database error querying schema"
+-- Buat user admin via Supabase Dashboard: Authentication → Users → Add User
+-- Email: admin@d2cpro.com, Password: admin123
+-- Trigger on_auth_user_created otomatis bikin profile, lalu:
+-- UPDATE profiles SET role = 'admin' WHERE email = 'admin@d2cpro.com';
 
 -- 2. Categories
 INSERT INTO categories (name, slug, description, sort_order) VALUES

@@ -124,7 +124,7 @@ export default function Navbar() {
                   </Button>
                 </Link>
               )}
-              <Link href={`/order`}>
+              <Link href="/profile">
                 <Button variant="ghost" size="icon">
                   <User className="h-5 w-5" />
                 </Button>

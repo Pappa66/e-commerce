@@ -3,7 +3,96 @@
 import { createServerSupabaseClient } from './supabase/server'
 import { revalidatePath } from 'next/cache'
 import { slugify, calculateFinalPrice, generateOrderNumber } from './utils'
-import type { Address, Wishlist, Review, Profile, FAQ } from '@/types/database'
+import type { Address, Wishlist, Review, Profile, FAQ, Coupon } from '@/types/database'
+
+// --- PROFILE ---
+
+export async function updateProfile(formData: FormData) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Silakan login' }
+
+  const fullName = formData.get('full_name') as string
+  const phone = formData.get('phone') as string
+  const gender = formData.get('gender') as string
+  const birthDate = formData.get('birth_date') as string
+
+  const { error } = await supabase.from('profiles').update({
+    full_name: fullName || null,
+    phone: phone || null,
+    gender: gender || null,
+    birth_date: birthDate || null,
+  }).eq('id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/profile')
+  return { success: true }
+}
+
+export async function saveAddress(formData: FormData) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Silakan login' }
+
+  const addressId = formData.get('id') as string
+  const label = formData.get('label') as string
+  const recipientName = formData.get('recipient_name') as string
+  const phone = formData.get('phone') as string
+  const streetAddress = formData.get('street_address') as string
+  const city = formData.get('city') as string
+  const district = formData.get('district') as string
+  const province = formData.get('province') as string
+  const postalCode = formData.get('postal_code') as string
+  const isDefault = formData.get('is_default') === 'on'
+
+  const addressData: any = {
+    user_id: user.id,
+    label: label || null,
+    recipient_name: recipientName || null,
+    phone: phone || null,
+    street_address: streetAddress,
+    city,
+    district: district || null,
+    province,
+    postal_code: postalCode || null,
+    is_default: isDefault,
+  }
+
+  if (isDefault) {
+    await supabase.from('addresses').update({ is_default: false }).eq('user_id', user.id)
+  }
+
+  if (addressId) {
+    const { error } = await supabase.from('addresses').update(addressData).eq('id', addressId).eq('user_id', user.id)
+    if (error) return { error: error.message }
+  } else {
+    const { error } = await supabase.from('addresses').insert(addressData)
+    if (error) return { error: error.message }
+  }
+
+  revalidatePath('/profile')
+  return { success: true }
+}
+
+export async function deleteAddress(addressId: string): Promise<void> {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  await supabase.from('addresses').delete().eq('id', addressId).eq('user_id', user.id)
+  revalidatePath('/profile')
+}
+
+export async function setDefaultAddress(addressId: string) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Silakan login' }
+
+  await supabase.from('addresses').update({ is_default: false }).eq('user_id', user.id)
+  await supabase.from('addresses').update({ is_default: true }).eq('id', addressId).eq('user_id', user.id)
+  revalidatePath('/profile')
+  revalidatePath('/checkout')
+}
 
 // --- AUTH ---
 
@@ -51,7 +140,7 @@ export async function createProduct(formData: FormData) {
   const slug = slugify(name)
   const finalPrice = calculateFinalPrice(basePrice, profitMargin, taxRate)
 
-  const { error } = await supabase.from('products').insert({
+  const { data: newProduct, error } = await supabase.from('products').insert({
     name,
     slug,
     description,
@@ -66,10 +155,27 @@ export async function createProduct(formData: FormData) {
     meta_title: metaTitle || null,
     meta_description: metaDescription || null,
     meta_keywords: metaKeywords || null,
-  })
+  }).select('id').single()
 
   if (error) return { error: error.message }
   revalidatePath('/admin/products')
+  return { success: true, productId: newProduct?.id }
+}
+
+export async function saveProductVariants(productId: string, variants: { name: string; size: string; color: string; price_adjustment: number; stock: number }[]) {
+  const supabase = await createServerSupabaseClient()
+
+  await supabase.from('product_variants').delete().eq('product_id', productId)
+
+  if (variants.length === 0) return { success: true }
+
+  const { error } = await supabase.from('product_variants').insert(
+    variants.map(v => ({ ...v, product_id: productId }))
+  )
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin/products')
+  revalidatePath(`/produk/*`)
   return { success: true }
 }
 
@@ -420,9 +526,90 @@ export async function saveLandingSettings(formData: FormData) {
   return { success: true }
 }
 
+// --- COUPONS ---
+
+export async function validateCoupon(code: string, subtotal: number) {
+  const supabase = await createServerSupabaseClient()
+
+  const { data: coupon } = await supabase
+    .from('coupons')
+    .select('*')
+    .eq('code', code.toUpperCase())
+    .eq('is_active', true)
+    .single()
+
+  if (!coupon) return { error: 'Kode kupon tidak valid' }
+
+  const c = coupon as Coupon
+
+  if (c.expires_at && new Date(c.expires_at) < new Date()) return { error: 'Kupon sudah kadaluarsa' }
+  if (c.starts_at && new Date(c.starts_at) > new Date()) return { error: 'Kupon belum berlaku' }
+  if (c.usage_limit > 0 && c.used_count >= c.usage_limit) return { error: 'Kuota kupon sudah habis' }
+  if (subtotal < c.min_purchase) return { error: `Min. belanja Rp${c.min_purchase.toLocaleString('id-ID')} untuk kupon ini` }
+
+  let discountAmount = 0
+  if (c.type === 'percentage') {
+    discountAmount = Math.round(subtotal * c.value / 100)
+    if (c.max_discount) discountAmount = Math.min(discountAmount, c.max_discount)
+  } else if (c.type === 'fixed') {
+    discountAmount = c.value
+  } else if (c.type === 'free_shipping') {
+    discountAmount = 0
+  }
+
+  return { coupon: c, discountAmount: discountAmount || 0 }
+}
+
+export async function createCoupon(formData: FormData) {
+  const supabase = await createServerSupabaseClient()
+  const code = (formData.get('code') as string).toUpperCase()
+  const type = formData.get('type') as string
+  const value = parseFloat(formData.get('value') as string || '0')
+  const minPurchase = parseFloat(formData.get('min_purchase') as string || '0')
+  const maxDiscount = formData.get('max_discount') ? parseFloat(formData.get('max_discount') as string) : null
+  const usageLimit = parseInt(formData.get('usage_limit') as string || '0')
+  const expiresAt = formData.get('expires_at') as string
+
+  const { error } = await supabase.from('coupons').insert({
+    code, type, value, min_purchase: minPurchase, max_discount: maxDiscount,
+    usage_limit: usageLimit, expires_at: expiresAt || null,
+  })
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin/coupons')
+  return { success: true }
+}
+
+export async function updateCoupon(id: string, formData: FormData) {
+  const supabase = await createServerSupabaseClient()
+  const code = (formData.get('code') as string).toUpperCase()
+  const type = formData.get('type') as string
+  const value = parseFloat(formData.get('value') as string || '0')
+  const minPurchase = parseFloat(formData.get('min_purchase') as string || '0')
+  const maxDiscount = formData.get('max_discount') ? parseFloat(formData.get('max_discount') as string) : null
+  const usageLimit = parseInt(formData.get('usage_limit') as string || '0')
+  const isActive = formData.get('is_active') === 'on'
+  const expiresAt = formData.get('expires_at') as string
+
+  const { error } = await supabase.from('coupons').update({
+    code, type, value, min_purchase: minPurchase, max_discount: maxDiscount,
+    usage_limit: usageLimit, is_active: isActive, expires_at: expiresAt || null,
+  }).eq('id', id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin/coupons')
+  return { success: true }
+}
+
+export async function deleteCoupon(id: string) {
+  const supabase = await createServerSupabaseClient()
+  await supabase.from('coupons').delete().eq('id', id)
+  revalidatePath('/admin/coupons')
+}
+
 // --- CHECKOUT ---
 
-export async function createOrder(items: { product_id: string; quantity: number; name: string; image: string; price: number }[], addressId: string, paymentMethod: string, notes: string) {
+export async function createOrder(items: { product_id: string; quantity: number; name: string; image: string; price: number; variant_name?: string }[], addressId: string, paymentMethod: string, notes: string, couponCode?: string) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Silakan login terlebih dahulu' }
@@ -430,7 +617,18 @@ export async function createOrder(items: { product_id: string; quantity: number;
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const taxAmount = 0
   const shippingCost = 0
-  const totalAmount = subtotal + shippingCost + taxAmount
+
+  let discountAmount = 0
+  let couponId: string | null = null
+  if (couponCode) {
+    const result = await validateCoupon(couponCode, subtotal)
+    if (result.coupon) {
+      discountAmount = result.discountAmount
+      couponId = result.coupon.id
+    }
+  }
+
+  const totalAmount = subtotal + shippingCost + taxAmount - discountAmount
   const orderNumber = generateOrderNumber()
 
   const { data: order, error: orderError } = await supabase.from('orders').insert({
@@ -442,6 +640,8 @@ export async function createOrder(items: { product_id: string; quantity: number;
     subtotal,
     shipping_cost: shippingCost,
     tax_amount: taxAmount,
+    discount_amount: discountAmount,
+    coupon_id: couponId,
     total_amount: totalAmount,
     shipping_address_id: addressId,
     notes: notes || null,
@@ -453,6 +653,7 @@ export async function createOrder(items: { product_id: string; quantity: number;
     order_id: order.id,
     product_id: item.product_id,
     product_name: item.name,
+    variant_name: item.variant_name || null,
     product_image: item.image,
     quantity: item.quantity,
     unit_price: item.price,
@@ -462,10 +663,74 @@ export async function createOrder(items: { product_id: string; quantity: number;
   const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
   if (itemsError) return { error: itemsError.message }
 
-  await supabase.from('cart_items').delete().in('product_id', items.map(i => i.product_id))
+  if (couponId) {
+    const { data: couponData } = await supabase.from('coupons').select('used_count').eq('id', couponId).single()
+    if (couponData) {
+      await supabase.from('coupons').update({ used_count: (couponData as any).used_count + 1 }).eq('id', couponId)
+    }
+  }
+
+  const { data: userCart } = await supabase.from('carts').select('id').eq('user_id', user.id).maybeSingle()
+  if (userCart) {
+    await supabase.from('cart_items').delete().eq('cart_id', userCart.id)
+  }
 
   revalidatePath('/order/' + order.id)
   revalidatePath('/cart')
 
   return { success: true, orderId: order.id, orderNumber }
+}
+
+// --- MIDTRANS ---
+
+export async function createMidtransTransaction(orderId: string) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Silakan login terlebih dahulu' }
+
+  const { data: order } = await supabase
+    .from('orders')
+    .select('*, items:order_items(*)')
+    .eq('id', orderId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!order) return { error: 'Pesanan tidak ditemukan' }
+
+  const Midtrans = require('midtrans-client')
+  const snap = new Midtrans.Snap({
+    isProduction: false,
+    serverKey: process.env.MIDTRANS_SERVER_KEY,
+    clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY,
+  })
+
+  const itemDetails = (order as any).items.map((item: any) => ({
+    id: item.product_id,
+    name: item.product_name,
+    price: Math.round(item.unit_price),
+    quantity: item.quantity,
+  }))
+
+  const parameter = {
+    transaction_details: {
+      order_id: (order as any).order_number,
+      gross_amount: Math.round((order as any).total_amount),
+    },
+    item_details: itemDetails,
+    customer_details: {
+      first_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Customer',
+      email: user.email,
+    },
+    callbacks: {
+      finish: `${process.env.NEXT_PUBLIC_APP_URL || ''}/order/${orderId}`,
+      error: `${process.env.NEXT_PUBLIC_APP_URL || ''}/order/${orderId}`,
+    },
+  }
+
+  try {
+    const transaction = await snap.createTransaction(parameter)
+    return { token: transaction.token, redirect_url: transaction.redirect_url }
+  } catch (err: any) {
+    return { error: err.message || 'Gagal membuat transaksi pembayaran' }
+  }
 }

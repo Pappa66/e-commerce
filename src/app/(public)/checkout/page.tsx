@@ -11,12 +11,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { formatPrice, getImageUrl } from "@/lib/utils"
-import { PAYMENT_METHOD_LABELS, INDONESIAN_PROVINCES } from "@/lib/constants"
-import { createOrder } from "@/lib/actions"
+import { INDONESIAN_PROVINCES } from "@/lib/constants"
+import { createOrder, validateCoupon, createMidtransTransaction } from "@/lib/actions"
 import { toast } from "sonner"
-import { ArrowLeft, MapPin, CreditCard, Truck, Shield } from "lucide-react"
+import { ArrowLeft, MapPin, CreditCard, Truck, Shield, Tag, X, Gift } from "lucide-react"
 import Link from "next/link"
-import type { Address } from "@/types/database"
+import type { Address, Coupon } from "@/types/database"
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -27,6 +27,17 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState("cod")
   const [notes, setNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
+
+  // Ship to different person
+  const [shipToOther, setShipToOther] = useState(false)
+  const [otherName, setOtherName] = useState("")
+  const [otherPhone, setOtherPhone] = useState("")
+
+  // Coupon
+  const [couponCode, setCouponCode] = useState("")
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
+  const [discountAmount, setDiscountAmount] = useState(0)
+  const [couponLoading, setCouponLoading] = useState(false)
 
   // New address form
   const [showNewAddress, setShowNewAddress] = useState(false)
@@ -41,13 +52,13 @@ export default function CheckoutPage() {
     postal_code: "",
   })
 
+  const subtotal = getTotal()
+  const total = Math.max(0, subtotal - discountAmount)
+
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        router.push("/login")
-        return
-      }
+      if (!data.user) { router.push("/login"); return }
       setUser(data.user)
       supabase.from("addresses").select("*").eq("user_id", data.user.id).then(({ data: addrs }) => {
         if (addrs) {
@@ -62,15 +73,10 @@ export default function CheckoutPage() {
   const handleSaveAddress = async () => {
     const supabase = createClient()
     const { error } = await supabase.from("addresses").insert({
-      user_id: user.id,
-      ...newAddress,
+      user_id: user.id, ...newAddress,
     }).select().single()
 
-    if (error) {
-      toast.error("Gagal menyimpan alamat")
-      return
-    }
-
+    if (error) { toast.error("Gagal menyimpan alamat"); return }
     toast.success("Alamat berhasil disimpan")
     setShowNewAddress(false)
     setNewAddress({ label: "", recipient_name: "", phone: "", street_address: "", city: "", district: "", province: "", postal_code: "" })
@@ -78,15 +84,29 @@ export default function CheckoutPage() {
     if (data) setAddresses(data as Address[])
   }
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) { toast.error("Masukkan kode kupon"); return }
+    setCouponLoading(true)
+    const result = await validateCoupon(couponCode, subtotal)
+    setCouponLoading(false)
+
+    if (result.error) { toast.error(result.error); return }
+    if (result.coupon) {
+      setAppliedCoupon(result.coupon)
+      setDiscountAmount(result.discountAmount || 0)
+      toast.success(`Kupon ${result.coupon.code} berhasil diterapkan!`)
+    }
+  }
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null)
+    setDiscountAmount(0)
+    setCouponCode("")
+  }
+
   const handleSubmit = async () => {
-    if (!selectedAddress) {
-      toast.error("Pilih alamat pengiriman")
-      return
-    }
-    if (items.length === 0) {
-      toast.error("Keranjang belanja kosong")
-      return
-    }
+    if (!selectedAddress) { toast.error("Pilih alamat pengiriman"); return }
+    if (items.length === 0) { toast.error("Keranjang belanja kosong"); return }
 
     setSubmitting(true)
     const cartItems = items.map(item => ({
@@ -95,18 +115,27 @@ export default function CheckoutPage() {
       name: item.product?.name || "",
       image: item.product?.images?.[0] || "",
       price: item.product?.final_price || 0,
+      variant_name: (item as any).variant?.name || undefined,
     }))
 
-    const result = await createOrder(cartItems, selectedAddress, paymentMethod, notes)
+    const result = await createOrder(cartItems, selectedAddress, paymentMethod, notes, appliedCoupon?.code)
     setSubmitting(false)
 
-    if (result.error) {
-      toast.error(result.error)
-      return
-    }
-
+    if (result.error) { toast.error(result.error); return }
     toast.success("Pesanan berhasil dibuat!")
-    router.push(`/order/${result.orderId}`)
+
+    if (paymentMethod === "midtrans") {
+      const midtransResult = await createMidtransTransaction(result.orderId!)
+      if (midtransResult.error) {
+        toast.error(midtransResult.error)
+        router.push(`/order/${result.orderId}`)
+      } else if (midtransResult.redirect_url) {
+        window.location.href = midtransResult.redirect_url
+        return
+      }
+    } else {
+      router.push(`/order/${result.orderId}`)
+    }
   }
 
   if (items.length === 0) {
@@ -118,12 +147,12 @@ export default function CheckoutPage() {
     )
   }
 
+  const selectedAddr = addresses.find(a => a.id === selectedAddress)
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center gap-2 mb-6">
-        <Link href="/cart" className="text-gray-500 hover:text-gray-700">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
+        <Link href="/cart" className="text-gray-500 hover:text-gray-700"><ArrowLeft className="h-5 w-5" /></Link>
         <h1 className="text-2xl font-bold">Checkout</h1>
       </div>
 
@@ -153,52 +182,78 @@ export default function CheckoutPage() {
             ) : (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Label (Rumah/Kantor)</Label>
-                    <Input value={newAddress.label} onChange={e => setNewAddress(p => ({ ...p, label: e.target.value }))} placeholder="Rumah" />
-                  </div>
-                  <div>
-                    <Label>Nama Penerima</Label>
-                    <Input value={newAddress.recipient_name} onChange={e => setNewAddress(p => ({ ...p, recipient_name: e.target.value }))} placeholder="Nama" />
-                  </div>
+                  <div><Label>Label</Label><Input value={newAddress.label} onChange={e => setNewAddress(p => ({ ...p, label: e.target.value }))} placeholder="Rumah/Kantor" /></div>
+                  <div><Label>Nama Penerima</Label><Input value={newAddress.recipient_name} onChange={e => setNewAddress(p => ({ ...p, recipient_name: e.target.value }))} placeholder="Nama" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>No. Telepon</Label>
-                    <Input value={newAddress.phone} onChange={e => setNewAddress(p => ({ ...p, phone: e.target.value }))} placeholder="0812..." />
-                  </div>
-                  <div>
-                    <Label>Provinsi</Label>
+                  <div><Label>No. Telepon</Label><Input value={newAddress.phone} onChange={e => setNewAddress(p => ({ ...p, phone: e.target.value }))} placeholder="0812..." /></div>
+                  <div><Label>Provinsi</Label>
                     <select value={newAddress.province} onChange={e => setNewAddress(p => ({ ...p, province: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-                      <option value="">Pilih Provinsi</option>
+                      <option value="">Pilih</option>
                       {INDONESIAN_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Kota</Label>
-                    <Input value={newAddress.city} onChange={e => setNewAddress(p => ({ ...p, city: e.target.value }))} placeholder="Kota" />
-                  </div>
-                  <div>
-                    <Label>Kecamatan</Label>
-                    <Input value={newAddress.district} onChange={e => setNewAddress(p => ({ ...p, district: e.target.value }))} placeholder="Kecamatan" />
-                  </div>
+                  <div><Label>Kota</Label><Input value={newAddress.city} onChange={e => setNewAddress(p => ({ ...p, city: e.target.value }))} placeholder="Kota" /></div>
+                  <div><Label>Kecamatan</Label><Input value={newAddress.district} onChange={e => setNewAddress(p => ({ ...p, district: e.target.value }))} placeholder="Kecamatan" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Alamat Lengkap</Label>
-                    <Input value={newAddress.street_address} onChange={e => setNewAddress(p => ({ ...p, street_address: e.target.value }))} placeholder="Jl. ..." />
-                  </div>
-                  <div>
-                    <Label>Kode Pos</Label>
-                    <Input value={newAddress.postal_code} onChange={e => setNewAddress(p => ({ ...p, postal_code: e.target.value }))} placeholder="12345" />
-                  </div>
+                  <div><Label>Alamat Lengkap</Label><Input value={newAddress.street_address} onChange={e => setNewAddress(p => ({ ...p, street_address: e.target.value }))} placeholder="Jl. ..." /></div>
+                  <div><Label>Kode Pos</Label><Input value={newAddress.postal_code} onChange={e => setNewAddress(p => ({ ...p, postal_code: e.target.value }))} placeholder="12345" /></div>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveAddress} className="bg-emerald-600 hover:bg-emerald-700">Simpan Alamat</Button>
                   {addresses.length > 0 && <Button variant="outline" onClick={() => setShowNewAddress(false)}>Batal</Button>}
                 </div>
+              </div>
+            )}
+
+            {/* Ship to different person */}
+            {selectedAddr && !showNewAddress && (
+              <div className="mt-4 pt-4 border-t">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={shipToOther} onChange={e => setShipToOther(e.target.checked)} className="rounded" />
+                  <span className="text-sm font-medium">Kirim ke orang lain</span>
+                </label>
+                {shipToOther && (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div><Label className="text-xs">Nama Penerima</Label><Input value={otherName} onChange={e => setOtherName(e.target.value)} placeholder="Nama penerima" /></div>
+                    <div><Label className="text-xs">No. Telepon</Label><Input value={otherPhone} onChange={e => setOtherPhone(e.target.value)} placeholder="0812..." /></div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Coupon */}
+          <div className="rounded-xl border p-6 bg-white">
+            <div className="flex items-center gap-2 mb-4">
+              <Tag className="h-5 w-5 text-emerald-600" />
+              <h2 className="font-semibold text-lg">Kupon / Voucher</h2>
+            </div>
+
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between bg-emerald-50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Gift className="h-5 w-5 text-emerald-600" />
+                  <div>
+                    <p className="text-sm font-medium text-emerald-700">{appliedCoupon.code}</p>
+                    <p className="text-xs text-emerald-600">
+                      Diskon {discountAmount > 0 ? formatPrice(discountAmount) : "Ongkos Kirim"}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRemoveCoupon}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="Masukkan kode kupon" className="uppercase" />
+                <Button variant="outline" onClick={handleApplyCoupon} disabled={couponLoading || !couponCode.trim()}>
+                  {couponLoading ? "..." : "Pakai"}
+                </Button>
               </div>
             )}
           </div>
@@ -252,15 +307,32 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium line-clamp-2">{item.product?.name}</p>
+                    {(item as any).variant?.name && <p className="text-xs text-gray-400">{(item as any).variant.name}</p>}
                     <p className="text-xs text-gray-500">{item.quantity}x {formatPrice(item.product?.final_price || 0)}</p>
                   </div>
                 </div>
               ))}
             </div>
+
+            {shipToOther && otherName && (
+              <div className="text-xs text-gray-500 mb-3 pb-3 border-b">
+                Dikirim ke: <span className="font-medium">{otherName}</span> {otherPhone && `(${otherPhone})`}
+              </div>
+            )}
+
             <div className="border-t pt-3 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span>{formatPrice(getTotal())}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span>{formatPrice(subtotal)}</span></div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span>Diskon Kupon</span>
+                  <span>-{formatPrice(discountAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between"><span className="text-gray-600">Ongkos Kirim</span><span className="text-gray-400">Dihitung nanti</span></div>
-              <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span className="text-emerald-600">{formatPrice(getTotal())}</span></div>
+              <div className="flex justify-between font-bold text-lg border-t pt-2">
+                <span>Total</span>
+                <span className="text-emerald-600">{formatPrice(Math.max(0, total))}</span>
+              </div>
             </div>
             <Button
               className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700"

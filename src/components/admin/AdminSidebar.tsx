@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Package, Tags, Image as ImageIcon, ShoppingCart, Settings, ArrowLeft,
-  HelpCircle, FileText, MessageSquare
+  HelpCircle, FileText, MessageSquare, Tag
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,7 @@ const sidebarLinks = [
   { href: '/admin/categories', label: 'Kategori', icon: Tags },
   { href: '/admin/banners', label: 'Banner', icon: ImageIcon },
   { href: '/admin/orders', label: 'Pesanan', icon: ShoppingCart },
+  { href: '/admin/coupons', label: 'Kupon', icon: Tag },
   { href: '/admin/faq', label: 'FAQ', icon: MessageSquare },
   { href: '/admin/settings', label: 'Pengaturan', icon: Settings },
 ]

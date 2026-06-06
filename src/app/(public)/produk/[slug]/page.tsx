@@ -3,13 +3,13 @@ import Image from "next/image"
 import { Check, Truck, Shield } from "lucide-react"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { formatPrice, getImageUrl } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import AddToCartButton from "./add-to-cart"
 import WishlistButton from "./wishlist-button"
+import VariantSelector from "./variant-selector"
 import ReviewsSection from "./reviews-section"
 import type { Metadata } from "next"
-import type { Product } from "@/types/database"
+import type { Product, ProductVariant } from "@/types/database"
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -48,6 +48,18 @@ export default async function ProductDetailPage({ params }: Props) {
 
   const p = product as Product
 
+  const { data: variants } = await supabase
+    .from("product_variants")
+    .select("*")
+    .eq("product_id", p.id)
+    .eq("is_active", true)
+    .order("name")
+
+  const hasVariants = variants && variants.length > 0
+  const totalStock = hasVariants
+    ? variants!.reduce((sum, v) => sum + v.stock, 0)
+    : p.stock
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
@@ -84,8 +96,23 @@ export default async function ProductDetailPage({ params }: Props) {
 
           <div className="mt-2 text-sm text-gray-500">
             <span className="font-medium text-gray-700">Stok:</span>{" "}
-            {p.stock > 0 ? `${p.stock} tersedia` : "Habis"}
+            {totalStock > 0 ? `${totalStock} tersedia` : "Habis"}
           </div>
+
+          {hasVariants && (
+            <VariantSelector
+              variants={variants as ProductVariant[]}
+              basePrice={p.final_price}
+              product={p}
+            />
+          )}
+
+          {!hasVariants && (
+            <div className="mt-8 flex gap-3">
+              <AddToCartButton product={p} />
+              <WishlistButton productId={p.id} />
+            </div>
+          )}
 
           {p.description && (
             <p className="mt-6 text-gray-600 leading-relaxed whitespace-pre-line">
@@ -103,11 +130,6 @@ export default async function ProductDetailPage({ params }: Props) {
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-emerald-600" /> Produk Original 100%
             </div>
-          </div>
-
-          <div className="mt-8 flex gap-3">
-            <AddToCartButton product={p} />
-            <WishlistButton productId={p.id} />
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@ interface CartState {
   items: CartItem[]
   isLoading: boolean
   fetchCart: () => Promise<void>
-  addItem: (product: Product, quantity?: number) => Promise<void>
+  addItem: (product: Product, quantity?: number, variantId?: string) => Promise<void>
   updateQuantity: (itemId: string, quantity: number) => Promise<void>
   removeItem: (itemId: string) => Promise<void>
   clearCart: () => Promise<void>
@@ -27,7 +27,7 @@ export const useCart = create<CartState>((set, get) => ({
 
     const { data: cart } = await supabase
       .from('carts')
-      .select('*, items:cart_items(*, product:products(*))')
+      .select('*, items:cart_items(*, product:products(*), variant:product_variants(*))')
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -36,7 +36,7 @@ export const useCart = create<CartState>((set, get) => ({
     }
   },
 
-  addItem: async (product: Product, quantity = 1) => {
+  addItem: async (product: Product, quantity = 1, variantId?: string) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -50,11 +50,17 @@ export const useCart = create<CartState>((set, get) => ({
       cartId = newCart!.id
     }
 
-    const existingItem = get().items.find(i => i.product_id === product.id)
+    const existingItem = get().items.find(i => i.product_id === product.id && i.variant_id === (variantId || null))
     if (existingItem) {
       await supabase.from('cart_items').update({ quantity: existingItem.quantity + quantity }).eq('id', existingItem.id)
     } else {
-      const { data: newItem } = await supabase.from('cart_items').insert({ cart_id: cartId, product_id: product.id, quantity }).select('*, product:products(*)').single()
+      const insertData: any = { cart_id: cartId, product_id: product.id, quantity }
+      if (variantId) insertData.variant_id = variantId
+      const { data: newItem } = await supabase
+        .from('cart_items')
+        .insert(insertData)
+        .select('*, product:products(*)')
+        .single()
       if (newItem) {
         set(state => ({ items: [...state.items, newItem as any] }))
       }
