@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { ShoppingCart, Heart } from 'lucide-react'
+import { ShoppingCart, Heart, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatPrice, getImageUrl, cn } from '@/lib/utils'
 import { useCart } from '@/lib/hooks/use-cart'
@@ -20,6 +20,7 @@ export default function ProductCard({ product }: Props) {
   const addItem = useCart(s => s.addItem)
   const router = useRouter()
   const [wishlisted, setWishlisted] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
 
   useEffect(() => {
     const check = async () => {
@@ -64,37 +65,50 @@ export default function ProductCard({ product }: Props) {
     }
   }
 
+  const discountPercent = product.profit_margin > 0
+    ? Math.round((1 - product.final_price / product.base_price) * 100)
+    : 0
+
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-xl border bg-white transition-all hover:shadow-lg">
-      <Link href={`/produk/${product.slug}`} className="relative aspect-square overflow-hidden bg-gray-100">
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white transition-all duration-200 hover:shadow-xl hover:-translate-y-1 card-hover">
+      <Link href={`/produk/${product.slug}`} className="relative aspect-square overflow-hidden bg-gray-50">
         <Image
           src={getImageUrl(product.images?.[0] || null)}
           alt={product.name}
           fill
-          className="object-cover transition-transform group-hover:scale-105"
+          className={cn("object-cover transition-all duration-500 group-hover:scale-110", imgLoaded ? "opacity-100" : "opacity-0")}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          onLoad={() => setImgLoaded(true)}
         />
+        {discountPercent > 0 && (
+          <span className="absolute top-3 left-3 z-10 bg-rose-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">
+            -{discountPercent}%
+          </span>
+        )}
         {product.stock <= 0 && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <span className="bg-white text-gray-900 px-3 py-1 rounded text-sm font-medium">Habis</span>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-10">
+            <span className="bg-white text-gray-900 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">Stok Habis</span>
           </div>
         )}
         <button
           onClick={(e) => { e.preventDefault(); handleToggleWishlist() }}
-          className="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 hover:bg-white transition-colors shadow-sm"
+          className={cn(
+            "absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200",
+            wishlisted ? "bg-rose-50 shadow-sm" : "bg-white/80 hover:bg-white shadow-sm"
+          )}
         >
-          <Heart className={cn('h-4 w-4 transition-colors', wishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600')} />
+          <Heart className={cn('h-4.5 w-4.5 transition-colors', wishlisted ? 'fill-rose-500 text-rose-500' : 'text-gray-500 hover:text-rose-400')} />
         </button>
       </Link>
 
       <div className="flex flex-1 flex-col p-4">
         <Link href={`/produk/${product.slug}`}>
-          <h3 className="font-medium text-sm line-clamp-2 hover:text-emerald-600 transition-colors">
+          <h3 className="font-semibold text-sm leading-snug line-clamp-2 hover:text-emerald-600 transition-colors">
             {product.name}
           </h3>
         </Link>
 
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-2 flex items-baseline gap-2">
           <span className="text-lg font-bold text-emerald-600">
             {formatPrice(product.final_price)}
           </span>
@@ -105,19 +119,23 @@ export default function ProductCard({ product }: Props) {
           )}
         </div>
 
-        <div className="mt-auto pt-3 flex items-center justify-between">
-          <span className="text-xs text-gray-500">
-            {product.stock > 0 ? `${product.stock} tersedia` : 'Stok habis'}
-          </span>
+        {product.stock > 0 && product.stock <= 5 && (
+          <p className="text-[10px] text-amber-600 mt-1 font-medium">Sisa {product.stock} lagi!</p>
+        )}
+
+        <div className="mt-auto pt-3 flex items-center justify-between border-t border-gray-50">
           <Button
             size="sm"
-            variant="outline"
-            className="h-8 w-8 p-0"
+            className="bg-brand-gradient hover:opacity-90 text-white shadow-sm text-xs h-8 px-3"
             disabled={product.stock <= 0}
             onClick={handleAddToCart}
           >
-            <ShoppingCart className="h-4 w-4" />
+            <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+            Keranjang
           </Button>
+          <span className="text-[11px] text-gray-400 font-medium">
+            {product.stock > 0 ? `${product.stock} stok` : 'Habis'}
+          </span>
         </div>
       </div>
     </div>
