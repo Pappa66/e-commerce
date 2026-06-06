@@ -7,9 +7,8 @@ DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 DROP TRIGGER IF EXISTS update_carts_updated_at ON carts;
 DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
 DROP TRIGGER IF EXISTS update_reviews_updated_at ON reviews;
-DROP TRIGGER IF EXISTS update_faqs_updated_at ON faqs;
 DROP FUNCTION IF EXISTS handle_new_user();
-DROP FUNCTION IF EXISTS update_updated_at();
+DROP FUNCTION IF EXISTS update_updated_at() CASCADE;
 
 DROP TABLE IF EXISTS faqs CASCADE;
 DROP TABLE IF EXISTS site_settings CASCADE;
