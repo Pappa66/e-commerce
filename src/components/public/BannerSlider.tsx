@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Banner } from '@/types/database'
 
@@ -18,6 +19,10 @@ export default function BannerSlider({ banners }: Props) {
     setCurrent(prev => (prev + 1) % banners.length)
   }, [banners.length])
 
+  const prev = useCallback(() => {
+    setCurrent(prev => (prev - 1 + banners.length) % banners.length)
+  }, [banners.length])
+
   const goTo = (index: number) => setCurrent(index)
 
   useEffect(() => {
@@ -30,7 +35,7 @@ export default function BannerSlider({ banners }: Props) {
 
   return (
     <div
-      className="relative w-full h-[300px] md:h-[450px] overflow-hidden rounded-xl bg-gray-100"
+      className="relative w-full h-[300px] md:h-[450px] overflow-hidden rounded-xl bg-gray-100 group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -71,19 +76,35 @@ export default function BannerSlider({ banners }: Props) {
       ))}
 
       {banners.length > 1 && (
-        <div className="absolute bottom-4 right-4 flex gap-2">
-          {banners.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goTo(index)}
-              className={cn(
-                'w-2.5 h-2.5 rounded-full transition-all',
-                index === current ? 'bg-white w-6' : 'bg-white/50'
-              )}
-              aria-label={`Slide ${index + 1}`}
-            />
-          ))}
-        </div>
+        <>
+          <button
+            onClick={prev}
+            className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 hover:bg-white transition shadow opacity-0 group-hover:opacity-100"
+            aria-label="Sebelumnya"
+          >
+            <ChevronLeft className="h-5 w-5 text-gray-800" />
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 hover:bg-white transition shadow opacity-0 group-hover:opacity-100"
+            aria-label="Selanjutnya"
+          >
+            <ChevronRight className="h-5 w-5 text-gray-800" />
+          </button>
+          <div className="absolute bottom-4 right-4 flex gap-2">
+            {banners.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goTo(index)}
+                className={cn(
+                  'w-2.5 h-2.5 rounded-full transition-all',
+                  index === current ? 'bg-white w-6' : 'bg-white/50'
+                )}
+                aria-label={`Slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
