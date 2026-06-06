@@ -6,6 +6,8 @@ DROP TRIGGER IF EXISTS update_banners_updated_at ON banners;
 DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 DROP TRIGGER IF EXISTS update_carts_updated_at ON carts;
 DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
+DROP TRIGGER IF EXISTS update_reviews_updated_at ON reviews;
+DROP TRIGGER IF EXISTS update_faqs_updated_at ON faqs;
 DROP FUNCTION IF EXISTS handle_new_user();
 DROP FUNCTION IF EXISTS update_updated_at();
 
@@ -250,6 +252,8 @@ CREATE TRIGGER update_orders_updated_at
   BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_reviews_updated_at
   BEFORE UPDATE ON reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_faqs_updated_at
+  BEFORE UPDATE ON faqs FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
