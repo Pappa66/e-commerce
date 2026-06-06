@@ -1,34 +1,39 @@
+import { createServerSupabaseClient } from "@/lib/supabase/server"
 import Navbar from "@/components/public/Navbar"
 import Footer from "@/components/public/Footer"
 import BannerSlider from "@/components/public/BannerSlider"
 import ProductCard from "@/components/public/ProductCard"
-import { getCachedBanners, getCachedProducts, getCachedCategories } from "@/lib/cache"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { Banner, Product, Category } from "@/types/database"
 
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
-  const [banners, featuredData, categories] = await Promise.all([
-    getCachedBanners(),
-    getCachedProducts({ isFeatured: true, limit: 8 }),
-    getCachedCategories(),
+  const supabase = await createServerSupabaseClient()
+
+  const [bannersResult, productsResult, categoriesResult] = await Promise.all([
+    supabase.from("banners").select("*").eq("is_active", true).order("sort_order"),
+    supabase.from("products").select("*, category:categories(*)").eq("is_active", true).eq("is_featured", true).limit(8),
+    supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
   ])
+
+  const banners = bannersResult.data || []
+  const featuredProducts = productsResult.data || []
+  const categories = categoriesResult.data || []
 
   return (
     <>
       <Navbar />
       <main className="flex-1">
         <div className="container mx-auto px-4 py-6">
-          <BannerSlider banners={banners as Banner[]} />
+          <BannerSlider banners={banners as any} />
 
           {categories.length > 0 && (
             <section className="mt-10">
               <h2 className="text-xl font-bold mb-4">Kategori</h2>
               <div className="flex flex-wrap gap-3">
-                {(categories as Category[]).map((cat) => (
+                {categories.map((cat: any) => (
                   <Link
                     key={cat.id}
                     href={`/kategori/${cat.slug}`}
@@ -50,9 +55,9 @@ export default async function HomePage() {
                 </Button>
               </Link>
             </div>
-            {featuredData.products.length > 0 ? (
+            {featuredProducts.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {featuredData.products.map((product: Product) => (
+                {featuredProducts.map((product: any) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
