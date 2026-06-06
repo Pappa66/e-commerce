@@ -1,4 +1,3 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
 import Navbar from "@/components/public/Navbar"
 import Footer from "@/components/public/Footer"
 import BannerSlider from "@/components/public/BannerSlider"
@@ -6,21 +5,16 @@ import ProductCard from "@/components/public/ProductCard"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { getCachedProducts, getCachedCategories, getCachedBanners } from "@/lib/cache"
 
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
-  const supabase = await createServerSupabaseClient()
-
-  const [bannersResult, productsResult, categoriesResult] = await Promise.all([
-    supabase.from("banners").select("*").eq("is_active", true).order("sort_order"),
-    supabase.from("products").select("*, category:categories(*)").eq("is_active", true).eq("is_featured", true).limit(8),
-    supabase.from("categories").select("*").eq("is_active", true).order("sort_order"),
+  const [banners, categories, { products: featuredProducts }] = await Promise.all([
+    getCachedBanners(),
+    getCachedCategories(),
+    getCachedProducts({ isFeatured: true, limit: 8 }),
   ])
-
-  const banners = bannersResult.data || []
-  const featuredProducts = productsResult.data || []
-  const categories = categoriesResult.data || []
 
   return (
     <>

@@ -33,7 +33,7 @@ export function generateOrderNumber(): string {
   const yy = date.getFullYear().toString().slice(-2)
   const mm = (date.getMonth() + 1).toString().padStart(2, '0')
   const dd = date.getDate().toString().padStart(2, '0')
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase()
+  const random = crypto.randomUUID().substring(0, 6).toUpperCase()
   return `INV${yy}${mm}${dd}${random}`
 }
 

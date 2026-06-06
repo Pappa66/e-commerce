@@ -3,6 +3,7 @@ import { getCachedProducts } from "@/lib/cache"
 import { getCachedCategories } from "@/lib/cache"
 import ProductCard from "@/components/public/ProductCard"
 import Pagination from "@/components/ui/pagination"
+import SortSelect from "@/components/public/SortSelect"
 import { ITEMS_PER_PAGE } from "@/lib/constants"
 import type { Product, Category } from "@/types/database"
 
@@ -62,20 +63,7 @@ export default async function SearchPage({ searchParams }: Props) {
         </div>
 
         <div className="ml-auto">
-          <form>
-            {q && <input type="hidden" name="q" value={q} />}
-            {category && <input type="hidden" name="category" value={category} />}
-            <select
-              name="sort"
-              defaultValue={sort || ''}
-              onChange={e => e.target.form?.submit()}
-              className="text-sm border rounded-lg px-3 py-2 bg-white"
-            >
-              <option value="">Terbaru</option>
-              <option value="price_asc">Harga Terendah</option>
-              <option value="price_desc">Harga Tertinggi</option>
-            </select>
-          </form>
+          <SortSelect />
         </div>
       </div>
 
