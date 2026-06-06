@@ -23,17 +23,14 @@ export const useCart = create<CartState>((set, get) => ({
   fetchCart: async () => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
 
-    let cartQuery
-    if (user) {
-      cartQuery = supabase.from('carts').select('*, items:cart_items(*, product:products(*))').eq('user_id', user.id).maybeSingle()
-    } else {
-      const sessionId = localStorage.getItem('cart_session_id')
-      if (!sessionId) return
-      cartQuery = supabase.from('carts').select('*, items:cart_items(*, product:products(*))').eq('session_id', sessionId).maybeSingle()
-    }
+    const { data: cart } = await supabase
+      .from('carts')
+      .select('*, items:cart_items(*, product:products(*))')
+      .eq('user_id', user.id)
+      .maybeSingle()
 
-    const { data: cart } = await cartQuery
     if (cart) {
       set({ items: (cart as any).items || [] })
     }
@@ -42,30 +39,15 @@ export const useCart = create<CartState>((set, get) => ({
   addItem: async (product: Product, quantity = 1) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
 
     let cartId: string
-    let sessionId = typeof window !== 'undefined' ? localStorage.getItem('cart_session_id') : null
-
-    if (user) {
-      const { data: existingCart } = await supabase.from('carts').select('id').eq('user_id', user.id).maybeSingle()
-      if (existingCart) {
-        cartId = existingCart.id
-      } else {
-        const { data: newCart } = await supabase.from('carts').insert({ user_id: user.id }).select().single()
-        cartId = newCart!.id
-      }
+    const { data: existingCart } = await supabase.from('carts').select('id').eq('user_id', user.id).maybeSingle()
+    if (existingCart) {
+      cartId = existingCart.id
     } else {
-      if (!sessionId) {
-        sessionId = crypto.randomUUID()
-        localStorage.setItem('cart_session_id', sessionId)
-      }
-      const { data: existingCart } = await supabase.from('carts').select('id').eq('session_id', sessionId).maybeSingle()
-      if (existingCart) {
-        cartId = existingCart.id
-      } else {
-        const { data: newCart } = await supabase.from('carts').insert({ session_id: sessionId }).select().single()
-        cartId = newCart!.id
-      }
+      const { data: newCart } = await supabase.from('carts').insert({ user_id: user.id }).select().single()
+      cartId = newCart!.id
     }
 
     const existingItem = get().items.find(i => i.product_id === product.id)
@@ -77,7 +59,6 @@ export const useCart = create<CartState>((set, get) => ({
         set(state => ({ items: [...state.items, newItem as any] }))
       }
     }
-
     get().fetchCart()
   },
 

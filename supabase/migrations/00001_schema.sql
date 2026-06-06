@@ -9,6 +9,8 @@ DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
 DROP FUNCTION IF EXISTS handle_new_user();
 DROP FUNCTION IF EXISTS update_updated_at();
 
+DROP TABLE IF EXISTS reviews CASCADE;
+DROP TABLE IF EXISTS wishlists CASCADE;
 DROP TABLE IF EXISTS cart_items CASCADE;
 DROP TABLE IF EXISTS carts CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
@@ -157,6 +159,28 @@ CREATE TABLE order_items (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 10. Wishlists
+CREATE TABLE wishlists (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, product_id)
+);
+
+-- 11. Reviews
+CREATE TABLE reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, product_id)
+);
+
 -- Indexes
 CREATE INDEX idx_products_slug ON products(slug);
 CREATE INDEX idx_products_category ON products(category_id);
@@ -167,6 +191,10 @@ CREATE INDEX idx_orders_user ON orders(user_id);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_number ON orders(order_number);
 CREATE INDEX idx_cart_items_cart ON cart_items(cart_id);
+CREATE INDEX idx_wishlists_user ON wishlists(user_id);
+CREATE INDEX idx_wishlists_product ON wishlists(product_id);
+CREATE INDEX idx_reviews_product ON reviews(product_id);
+CREATE INDEX idx_reviews_user ON reviews(user_id);
 
 -- Triggers for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -189,6 +217,8 @@ CREATE TRIGGER update_carts_updated_at
   BEFORE UPDATE ON carts FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_orders_updated_at
   BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_reviews_updated_at
+  BEFORE UPDATE ON reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
@@ -229,6 +259,8 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE carts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wishlists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
@@ -268,8 +300,20 @@ CREATE POLICY "Admin all order items" ON order_items FOR ALL USING (
 CREATE POLICY "Users own addresses" ON addresses
   FOR ALL USING (auth.uid() = user_id);
 
+CREATE POLICY "Users own wishlists" ON wishlists
+  FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Public reviews" ON reviews
+  FOR SELECT USING (is_active = true);
+CREATE POLICY "Users own reviews" ON reviews
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users update own reviews" ON reviews
+  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users delete own reviews" ON reviews
+  FOR DELETE USING (auth.uid() = user_id);
+
 CREATE POLICY "Users own cart" ON carts
-  FOR ALL USING (auth.uid() = user_id OR session_id IS NOT NULL);
+  FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users own cart items" ON cart_items
   FOR ALL USING (cart_id IN (SELECT id FROM carts WHERE user_id = auth.uid()));
 

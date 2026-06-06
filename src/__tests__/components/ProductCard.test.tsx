@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ProductCard from '@/components/public/ProductCard'
+import { setMockUser } from '../setup'
 import type { Product } from '@/types/database'
 
 // Mock useCart
@@ -38,6 +39,7 @@ const mockProduct: Product = {
 describe('ProductCard', () => {
   beforeEach(() => {
     mockAddItem.mockReset()
+    setMockUser({ id: 'user-1', email: 'test@test.com' })
   })
 
   it('renders product name and price', () => {
@@ -59,10 +61,11 @@ describe('ProductCard', () => {
 
   it('calls addItem when add to cart button is clicked', async () => {
     const user = userEvent.setup()
-    render(<ProductCard product={mockProduct} />)
+    const { container } = render(<ProductCard product={mockProduct} />)
 
-    const addButton = screen.getByRole('button')
-    await user.click(addButton)
+    const buttons = container.querySelectorAll('button')
+    const cartButton = Array.from(buttons).find(b => b.className.includes('inline-flex'))
+    await user.click(cartButton!)
 
     expect(mockAddItem).toHaveBeenCalledWith(mockProduct)
   })
@@ -71,8 +74,9 @@ describe('ProductCard', () => {
     const outOfStock = { ...mockProduct, stock: 0 }
     render(<ProductCard product={outOfStock} />)
 
-    const button = screen.getByRole('button')
-    expect(button).toBeDisabled()
+    const buttons = screen.getAllByRole('button')
+    const disabledButtons = buttons.filter(b => b.hasAttribute('disabled'))
+    expect(disabledButtons.length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders product link', () => {

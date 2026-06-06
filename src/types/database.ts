@@ -56,6 +56,26 @@ export interface Profile {
   updated_at: string
 }
 
+export interface Wishlist {
+  id: string
+  user_id: string
+  product_id: string
+  created_at: string
+  product?: Product
+}
+
+export interface Review {
+  id: string
+  product_id: string
+  user_id: string
+  rating: number
+  comment: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  profile?: Profile
+}
+
 export interface Address {
   id: string
   user_id: string

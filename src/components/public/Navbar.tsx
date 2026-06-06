@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ShoppingCart, Search, Menu, X, User, LogOut, Package } from 'lucide-react'
+import { ShoppingCart, Search, Menu, X, User, LogOut, Package, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -111,6 +111,11 @@ export default function Navbar() {
 
           {user ? (
             <div className="hidden md:flex items-center gap-2">
+              <Link href="/wishlist">
+                <Button variant="ghost" size="icon">
+                  <Heart className="h-5 w-5" />
+                </Button>
+              </Link>
               {isAdmin && (
                 <Link href="/admin">
                   <Button variant="ghost" size="sm">
@@ -175,10 +180,15 @@ export default function Navbar() {
                 )}
                 <hr />
                 {user ? (
-                  <Button variant="outline" onClick={() => { handleLogout(); setMobileMenuOpen(false) }}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Keluar
-                  </Button>
+                  <>
+                    <Link href="/wishlist" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium text-gray-700 py-2">
+                      Favorit
+                    </Link>
+                    <Button variant="outline" onClick={() => { handleLogout(); setMobileMenuOpen(false) }}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Keluar
+                    </Button>
+                  </>
                 ) : (
                   <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                     <Button className="w-full bg-emerald-600 hover:bg-emerald-700">Masuk</Button>

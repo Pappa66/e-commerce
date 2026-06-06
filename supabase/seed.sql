@@ -127,6 +127,6 @@ INSERT INTO products (name, slug, description, category_id, base_price, profit_m
 
 -- 4. Banners
 INSERT INTO banners (title, subtitle, image_url, link_url, sort_order) VALUES
-('Koleksi Hijab Terbaru', 'Tampil stylish dengan hijab modern kami, adem dan nyaman sepanjang hari', 'https://images.unsplash.com/photo-1605600659873-12a5b48218d9', '/search?q=hijab', 1),
-('Gamis Spesial Ramadan', 'Sambut bulan penuh berkah dengan gamis elegan dari koleksi terbaru', 'https://images.unsplash.com/photo-1605600659873-12a5b48218d9', '/search?q=gamis', 2),
+('Koleksi Hijab Terbaru', 'Tampil stylish dengan hijab modern kami, adem dan nyaman sepanjang hari', 'https://images.unsplash.com/photo-1605600659873-12a5b48218d9', '/kategori/hijab', 1),
+('Gamis Spesial Ramadan', 'Sambut bulan penuh berkah dengan gamis elegan dari koleksi terbaru', 'https://images.unsplash.com/photo-1605600659873-12a5b48218d9', '/kategori/gamis', 2),
 ('Bebas Ongkir + COD', 'Nikmati belanja tanpa khawatir. Bayar di tempat dan gratis ongkir!', 'https://images.unsplash.com/photo-1605600659873-12a5b48218d9', '/search', 3);

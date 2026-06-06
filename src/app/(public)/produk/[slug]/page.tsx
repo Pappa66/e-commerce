@@ -6,6 +6,8 @@ import { formatPrice, getImageUrl } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import AddToCartButton from "./add-to-cart"
+import WishlistButton from "./wishlist-button"
+import ReviewsSection from "./reviews-section"
 import type { Metadata } from "next"
 import type { Product } from "@/types/database"
 
@@ -105,9 +107,12 @@ export default async function ProductDetailPage({ params }: Props) {
 
           <div className="mt-8 flex gap-3">
             <AddToCartButton product={p} />
+            <WishlistButton productId={p.id} />
           </div>
         </div>
       </div>
+
+      <ReviewsSection productId={p.id} />
     </div>
   )
 }

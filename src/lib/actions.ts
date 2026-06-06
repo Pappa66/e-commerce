@@ -3,7 +3,7 @@
 import { createServerSupabaseClient } from './supabase/server'
 import { revalidatePath } from 'next/cache'
 import { slugify, calculateFinalPrice, generateOrderNumber } from './utils'
-import type { Address } from '@/types/database'
+import type { Address, Wishlist, Review, Profile } from '@/types/database'
 
 // --- AUTH ---
 
@@ -227,6 +227,108 @@ export async function updateShippingTracking(orderId: string, courier: string, s
   }).eq('id', orderId)
 
   revalidatePath('/admin/orders')
+}
+
+// --- WISHLIST ---
+
+export async function toggleWishlist(productId: string) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Silakan login terlebih dahulu' }
+
+  const { data: existing } = await supabase
+    .from('wishlists')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('product_id', productId)
+    .maybeSingle()
+
+  if (existing) {
+    await supabase.from('wishlists').delete().eq('id', existing.id)
+    return { wishlisted: false }
+  }
+
+  await supabase.from('wishlists').insert({ user_id: user.id, product_id: productId })
+  return { wishlisted: true }
+}
+
+export async function getWishlist() {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('wishlists')
+    .select('*, product:products(*)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  return (data || []) as Wishlist[]
+}
+
+export async function isWishlisted(productId: string) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data } = await supabase
+    .from('wishlists')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('product_id', productId)
+    .maybeSingle()
+
+  return !!data
+}
+
+export async function getWishlistIds() {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('wishlists')
+    .select('product_id')
+    .eq('user_id', user.id)
+
+  return (data || []).map(w => w.product_id)
+}
+
+// --- REVIEWS ---
+
+export async function createReview(productId: string, rating: number, comment: string) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Silakan login terlebih dahulu' }
+
+  const { error } = await supabase.from('reviews').insert({
+    product_id: productId,
+    user_id: user.id,
+    rating,
+    comment: comment || null,
+  })
+
+  if (error) return { error: error.message }
+  revalidatePath(`/produk/${productId}`)
+  return { success: true }
+}
+
+export async function getProductReviews(productId: string) {
+  const supabase = await createServerSupabaseClient()
+  const { data } = await supabase
+    .from('reviews')
+    .select('*, profile:profiles(full_name, avatar_url)')
+    .eq('product_id', productId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+
+  return (data || []) as (Review & { profile: Pick<Profile, 'full_name' | 'avatar_url'> })[]
+}
+
+export async function deleteReview(reviewId: string) {
+  const supabase = await createServerSupabaseClient()
+  await supabase.from('reviews').delete().eq('id', reviewId)
+  revalidatePath('/')
 }
 
 // --- CHECKOUT ---
