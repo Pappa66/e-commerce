@@ -76,7 +76,8 @@ CREATE POLICY "Users own usage" ON coupon_usage FOR SELECT USING (auth.uid() = u
 CREATE POLICY "Admin all usage" ON coupon_usage FOR ALL USING (public.is_admin());
 
 -- 8. Triggers for updated_at
-CREATE TRIGGER IF NOT EXISTS update_variants_updated_at
+DROP TRIGGER IF EXISTS update_variants_updated_at ON product_variants;
+CREATE TRIGGER update_variants_updated_at
   BEFORE UPDATE ON product_variants FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- 9. Default coupon data
