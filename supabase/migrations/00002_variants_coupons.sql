@@ -80,7 +80,10 @@ DROP TRIGGER IF EXISTS update_variants_updated_at ON product_variants;
 CREATE TRIGGER update_variants_updated_at
   BEFORE UPDATE ON product_variants FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- 9. Default coupon data
+-- 9. Storage bucket for avatars
+INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true) ON CONFLICT DO NOTHING;
+
+-- 10. Default coupon data
 INSERT INTO coupons (code, type, value, min_purchase, max_discount, usage_limit, is_active, expires_at) VALUES
 ('WELCOME10', 'percentage', 10, 50000, 50000, 100, true, NOW() + INTERVAL '90 days'),
 ('FREEONGKIR', 'free_shipping', 0, 100000, NULL, 50, true, NOW() + INTERVAL '30 days'),

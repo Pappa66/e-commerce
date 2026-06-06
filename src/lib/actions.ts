@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerSupabaseClient } from './supabase/server'
+import { createAdminClient } from './supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { slugify, calculateFinalPrice, generateOrderNumber } from './utils'
 import type { Address, Wishlist, Review, Profile, FAQ, Coupon } from '@/types/database'
@@ -17,11 +18,32 @@ export async function updateProfile(formData: FormData) {
   const avatarUrl = formData.get('avatar_url') as string
   const gender = formData.get('gender') as string
   const birthDate = formData.get('birth_date') as string
+  const avatarFile = formData.get('avatar_file') as File | null
+
+  let finalAvatarUrl = avatarUrl || null
+
+  if (avatarFile && avatarFile instanceof File && avatarFile.size > 0) {
+    const adminClient = createAdminClient()
+    const ext = avatarFile.name.split('.').pop() || 'jpg'
+    const filePath = `${user.id}/${Date.now()}.${ext}`
+
+    const { error: uploadError } = await adminClient.storage
+      .from('avatars')
+      .upload(filePath, avatarFile, { upsert: true })
+
+    if (uploadError) return { error: uploadError.message }
+
+    const { data: urlData } = adminClient.storage
+      .from('avatars')
+      .getPublicUrl(filePath)
+
+    finalAvatarUrl = urlData.publicUrl
+  }
 
   const { error } = await supabase.from('profiles').update({
     full_name: fullName || null,
     phone: phone || null,
-    avatar_url: avatarUrl || null,
+    avatar_url: finalAvatarUrl,
     gender: gender || null,
     birth_date: birthDate || null,
   }).eq('id', user.id)

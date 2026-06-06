@@ -112,8 +112,9 @@ export default function ProfilePage() {
                 <Input id="phone" name="phone" defaultValue={profile?.phone || ""} placeholder="0812..." />
               </div>
               <div>
-                <Label htmlFor="avatar_url">Foto Profil (URL)</Label>
-                <Input id="avatar_url" name="avatar_url" defaultValue={profile?.avatar_url || ""} placeholder="https://..." />
+                <Label htmlFor="avatar_file">Foto Profil</Label>
+                <Input id="avatar_file" name="avatar_file" type="file" accept="image/*" className="text-sm" />
+                {profile?.avatar_url && <p className="text-xs text-gray-400 mt-1">Kosongkan jika tidak ingin ganti foto</p>}
               </div>
               <div>
                 <Label htmlFor="gender">Jenis Kelamin</Label>
